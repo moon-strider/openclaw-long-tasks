@@ -53,9 +53,10 @@ def verify_experiment(folder):
         traces = [
             json.loads(line) for line in (folder / f"{run_id}-calls.jsonl").read_text().splitlines()
         ]
-        require(len(traces) == len(calls), "Trace count mismatch")
+        require(len(traces) <= len(calls), "Trace count exceeds reserved calls")
         by_number = {t["number"]: t for t in traces}
         require(len(by_number) == len(traces), "Duplicate trace")
+        require(set(by_number) <= set(range(run["calls"])), "Unreserved trace")
         steps = sorted(
             (s for s in journal["steps"] if s["run_id"] == run_id), key=lambda s: s["step"]
         )
@@ -65,7 +66,19 @@ def verify_experiment(folder):
         for number in range(len(steps) + 1):
             votes, selected, selected_votes = Counter(), None, None
             for sample in (s for s in calls if s["step"] == number):
-                trace = by_number[sample["number"]]
+                trace = by_number.get(sample["number"])
+                if sample["status"] == "abandoned":
+                    require(
+                        sample["reason"] == "interrupted"
+                        and sample["candidate"] is None
+                        and sample["response"] is None,
+                        "Abandoned reservation acquired a recorded response or candidate",
+                    )
+                    if trace is not None:
+                        require(trace["prompt"] == task.prompt(state), "Abandoned prompt mismatch")
+                    # An interrupted reservation remains charged and never acquires a vote.
+                    continue
+                require(trace is not None, "Missing trace for committed sample")
                 require(trace["prompt"] == task.prompt(state), "Prompt differs from actual state")
                 raw = trace.get("sample")
                 if raw is None:
@@ -114,7 +127,40 @@ def verify_experiment(folder):
             result["passed"] == (evaluation["passed"] and not result["error"]), "Success mismatch"
         )
         total_calls += len(calls)
-    return {"cases": len(rows), "successes": sum(r["passed"] for r in rows), "calls": total_calls}
+    report = {"cases": len(rows), "successes": sum(r["passed"] for r in rows), "calls": total_calls}
+    if (folder / "interruption.json").exists():
+        report["preserved_resume_prefix"] = verify_recovery(folder, journal)
+    return report
+
+
+def verify_recovery(folder, after):
+    note = json.loads((folder / "interruption.json").read_text())
+    before = json.loads((folder / "journal-before-resume.json").read_text())
+    run_id = note["run_id"]
+    previous = next(r for r in before["runs"] if r["id"] == run_id)
+    current = next(r for r in after["runs"] if r["id"] == run_id)
+    require(previous["steps"] == note["completed_steps"], "Interruption step mismatch")
+    require(previous["calls"] == note["reserved_calls"], "Interruption budget mismatch")
+    require(current["calls"] >= previous["calls"], "Resume reset the call budget")
+    require(current["created"] == previous["created"], "Resume recreated the run")
+    require(current["fingerprint"] == previous["fingerprint"], "Resume changed the protocol")
+    old_steps = [s for s in before["steps"] if s["run_id"] == run_id]
+    new_steps = [
+        s for s in after["steps"] if s["run_id"] == run_id and s["step"] < previous["steps"]
+    ]
+    require(new_steps == old_steps, "Resume changed an accepted checkpoint")
+    new_samples = {s["number"]: s for s in after["samples"] if s["run_id"] == run_id}
+    pending = []
+    for sample in (s for s in before["samples"] if s["run_id"] == run_id):
+        expected = dict(sample)
+        if sample["status"] == "pending":
+            pending.append(sample["number"])
+            expected.update(status="abandoned", reason="interrupted")
+        require(
+            new_samples.get(sample["number"]) == expected, "Resume changed a charged reservation"
+        )
+    require(pending == note["pending_calls"], "Interrupted call list mismatch")
+    return previous["steps"]
 
 
 def verify_archive(root):

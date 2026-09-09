@@ -26,10 +26,16 @@ def test_archived_model_votes_replay():
     }
 
 
-@pytest.mark.parametrize("field", ["votes", "evaluation"])
+@pytest.mark.parametrize("field", ["votes", "evaluation", "missing_trace"])
 def test_semantic_replay_rejects_altered_claims(tmp_path, field):
     folder = tmp_path / "case"
     shutil.copytree(ROOT / "docs/evidence/hundred/runs/qwen-two-fixed", folder)
+    if field == "missing_trace":
+        path = folder / "choices-d7-k3-s101-calls.jsonl"
+        path.write_text("\n".join(path.read_text().splitlines()[1:]) + "\n")
+        with pytest.raises(ValueError, match="Missing trace for committed sample"):
+            VERIFIER.verify_experiment(folder)
+        return
     if field == "votes":
         path = folder / "journal.json"
         data = json.loads(path.read_text())
