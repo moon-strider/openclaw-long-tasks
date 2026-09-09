@@ -19,21 +19,27 @@ CHOICE_FORMAT = {
 
 
 class ChoiceHanoi:
-    def __init__(self, disks=7, rule_style="positive"):
+    def __init__(self, disks=7, rule_style="positive", routing_style="mapping"):
         if rule_style not in {"negative", "positive"}:
             raise ValueError("Unknown choice rule style")
+        if routing_style not in {"mapping", "examples"}:
+            raise ValueError("Unknown routing style")
         self.task = Hanoi(disks)
         self.rule_style = rule_style
+        self.routing_style = routing_style
 
     @property
     def specification(self):
-        return {
+        specification = {
             "task": "hanoi-choice",
             "version": 1,
             "disks": self.task.disks,
             "validation": "all_legal_moves_only",
             "rule_style": self.rule_style,
         }
+        if self.routing_style != "mapping":
+            specification.update(version=2, routing_style=self.routing_style)
+        return specification
 
     @property
     def initial_state(self):
@@ -81,7 +87,7 @@ class ChoiceHanoi:
             f"{letter}: DISK {m[0]}, SOURCE {m[1]}, DESTINATION {m[2]}"
             for letter, m in options.items()
         ]
-        return (
+        prompt = (
             "Select exactly one of the listed moves using the rule. All listed moves are physically legal, but only one follows the rule.\n"
             + "RULE: "
             + rule
@@ -89,6 +95,24 @@ class ChoiceHanoi:
             + "\n".join(rows)
             + '\nReturn only JSON {"choice":"A"}, {"choice":"B"}, or {"choice":"C"} for the selected option. /no_think'
         )
+        if self.routing_style == "examples" and state["step"] % 2 == 0:
+            # Fixed demonstrations, independent of the current state and oracle.
+            answers = (
+                ("B", "0 goes to 2", "C", "2 goes to 1", "A", "1 goes to 0")
+                if self.task.disks % 2
+                else ("A", "0 goes to 1", "B", "2 goes to 0", "B", "1 goes to 2")
+            )
+            prompt = (
+                "Worked examples of the disk-one routing rule:\n"
+                "Example 1 options: A: disk 1 from 0 to 1; B: disk 1 from 0 to 2. "
+                f"Correct choice {answers[0]}, because {answers[1]}.\n"
+                "Example 2 options: A: disk 8 from 1 to 0; B: disk 1 from 2 to 0; C: disk 1 from 2 to 1. "
+                f"Correct choice {answers[2]}, because {answers[3]}.\n"
+                "Example 3 options: A: disk 1 from 1 to 0; B: disk 1 from 1 to 2; C: disk 8 from 2 to 0. "
+                f"Correct choice {answers[4]}, because {answers[5]}.\n"
+                "Now solve the following input using the same rule:\n" + prompt
+            )
+        return prompt
 
     def parse(self, text, state):
         value = strict_json(text)

@@ -38,7 +38,7 @@ class TracedSampler(HTTPSampler):
 
 async def benchmark(args):
     args.output.mkdir(parents=True, exist_ok=args.resume)
-    task = ChoiceHanoi(args.disks, args.rule_style)
+    task = ChoiceHanoi(args.disks, args.rule_style, args.routing_style)
     sampling = SamplingConfig(
         base_url=args.base_url,
         model=args.model,
@@ -87,6 +87,7 @@ async def benchmark(args):
                     retain_responses=True,
                 )
                 maker = Maker(task, sampler, voting, journal)
+                resumed = journal.row(run_id) is not None
                 start = time.monotonic()
                 error = None
                 try:
@@ -141,7 +142,11 @@ async def benchmark(args):
                     "evaluation": evaluation,
                     "error": error,
                     "passed": error is None and evaluation["passed"],
-                    "elapsed_seconds": round(time.monotonic() - start, 3),
+                    "resumed": resumed,
+                    "elapsed_seconds": None if resumed else round(time.monotonic() - start, 3),
+                    "elapsed_resume_segment_seconds": (
+                        round(time.monotonic() - start, 3) if resumed else None
+                    ),
                 }
                 rows.append(row)
                 write_json(results_path, {"protocol_sha256": digest(protocol), "runs": rows})
@@ -179,6 +184,7 @@ def arguments():
     parser.add_argument("--margins", type=int, nargs="+", default=[3, 1])
     parser.add_argument("--temperature", type=float, default=0.1)
     parser.add_argument("--rule-style", choices=["negative", "positive"], default="positive")
+    parser.add_argument("--routing-style", choices=["mapping", "examples"], default="mapping")
     parser.add_argument("--max-samples", type=int, default=48)
     parser.add_argument("--max-calls", type=int, default=4000)
     parser.add_argument("--output", type=Path, required=True)

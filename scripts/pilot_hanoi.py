@@ -159,12 +159,13 @@ def local_endpoint(args):
 
 
 async def pilot(args, endpoint):
-    task = Hanoi(3, "deterministic", "micro")
+    task = Hanoi(args.disks, "deterministic", "micro")
     states = []
     state = task.initial_state
-    for move in oracle_moves(3):
+    for move in oracle_moves(args.disks):
         states.append((state, move))
         state = {"pegs": apply_move(state["pegs"], move), "step": state["step"] + 1}
+    states = states[: args.pilot_steps]
     variants = [
         ("micro", False, False, 0.7),
         ("table", False, False, 0.1),
@@ -174,7 +175,7 @@ async def pilot(args, endpoint):
     protocol = {
         "kind": "oracle_state_pilot",
         "closed_loop": False,
-        "disks": 3,
+        "disks": args.disks,
         "seeds": [211, 223, 227],
         "variants": variants,
         "states": [s for s, _ in states],

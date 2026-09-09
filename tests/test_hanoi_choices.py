@@ -44,3 +44,14 @@ def test_malformed_choices_are_rejected(text):
     task = ChoiceHanoi()
     with pytest.raises(ValueError):
         task.parse(text, task.initial_state)
+
+
+def test_demonstrations_do_not_change_options_or_validate_routing():
+    task = ChoiceHanoi(7, routing_style="examples")
+    state = task.initial_state
+    assert task.options(state) == ChoiceHanoi(7).options(state)
+    assert task.parse('{"choice":"A"}', state).action == [1, 0, 1]
+    assert "Worked examples" in task.prompt(state)
+    assert task.specification != ChoiceHanoi(7).specification
+    even = ChoiceHanoi(4, routing_style="examples")
+    assert "Correct choice A, because 0 goes to 1" in even.prompt(even.initial_state)
