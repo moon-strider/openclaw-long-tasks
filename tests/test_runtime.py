@@ -1,14 +1,28 @@
 from __future__ import annotations
 
 import json
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from long_tasks.config import Settings
-from long_tasks.models import Step, StepKind, StepStatus, Task, TaskStatus, ensure_step_transition, ensure_task_transition
-from long_tasks.runtime import DeterministicVerifier, InMemoryNotificationSink, NeedsUserInput, Scheduler, TaskBlocked, Worker, compute_retry_backoff
+from long_tasks.models import (
+    Step,
+    StepKind,
+    StepStatus,
+    Task,
+    TaskStatus,
+    ensure_step_transition,
+    ensure_task_transition,
+)
+from long_tasks.runtime import (
+    DeterministicVerifier,
+    InMemoryNotificationSink,
+    NeedsUserInput,
+    Scheduler,
+    Worker,
+    compute_retry_backoff,
+)
 from long_tasks.storage import TaskStore
 from long_tasks.utils import new_id, utcnow
 
@@ -30,7 +44,9 @@ def store(tmp_path: Path):
     return TaskStore(settings=settings)
 
 
-def make_task_bundle(store: TaskStore, *, status: TaskStatus = TaskStatus.READY, step_max_attempts: int = 3):
+def make_task_bundle(
+    store: TaskStore, *, status: TaskStatus = TaskStatus.READY, step_max_attempts: int = 3
+):
     now = utcnow()
     task_id = new_id()
     task = Task(
@@ -108,7 +124,10 @@ def test_expired_lease_reclaimable(store: TaskStore):
     first = store.acquire_lease(task.id, "worker-a")
     assert first is not None
     with store.transaction() as conn:
-        conn.execute("UPDATE tasks SET lease_expires_at = ? WHERE id = ?", ("2000-01-01T00:00:00+00:00", task.id))
+        conn.execute(
+            "UPDATE tasks SET lease_expires_at = ? WHERE id = ?",
+            ("2000-01-01T00:00:00+00:00", task.id),
+        )
     second = store.acquire_lease(task.id, "worker-b")
     assert second is not None
     assert second.reclaimed_expired_lease is True
@@ -132,9 +151,16 @@ def test_verifier(tmp_path: Path):
         title="verify",
         kind=StepKind.RESEARCH,
         instructions="",
-        verification={"file_exists": [str(artifact)], "file_contains": [{"path": str(artifact), "contains": "ok"}], "json_keys": ["summary"], "artifact_keys": ["result"]},
+        verification={
+            "file_exists": [str(artifact)],
+            "file_contains": [{"path": str(artifact), "contains": "ok"}],
+            "json_keys": ["summary"],
+            "artifact_keys": ["result"],
+        },
     )
-    result = DeterministicVerifier().verify(step, {"summary": "done", "artifacts": {"result": str(artifact)}})
+    result = DeterministicVerifier().verify(
+        step, {"summary": "done", "artifacts": {"result": str(artifact)}}
+    )
     assert result.ok is True
 
 
@@ -198,7 +224,10 @@ def test_shared_state_accumulates_verified_step_context(store: TaskStore):
     scheduler.tick("worker")
     after_second = store.get_task(task.id)
     assert after_second is not None
-    assert [item["title"] for item in after_second.shared_state["completed_steps"]] == ["БРА", "иАПФ"]
+    assert [item["title"] for item in after_second.shared_state["completed_steps"]] == [
+        "БРА",
+        "иАПФ",
+    ]
 
 
 def test_runner_receives_previous_step_context_in_task_packet(store: TaskStore):
@@ -215,10 +244,12 @@ def test_runner_receives_previous_step_context_in_task_packet(store: TaskStore):
         }
 
     def step1(task, step, attempt_count, artifacts_dir):
-        packets.append({
-            "shared_state": task.shared_state,
-            "completed_steps": task.shared_state.get("completed_steps", []),
-        })
+        packets.append(
+            {
+                "shared_state": task.shared_state,
+                "completed_steps": task.shared_state.get("completed_steps", []),
+            }
+        )
         artifact = artifacts_dir / "1.json"
         write_artifact(artifact, {"topic": step.title})
         return {"summary": f"done {step.title}", "artifacts": {"result": str(artifact)}}
@@ -285,7 +316,10 @@ def test_worker_crash_lease_expiry_recovery_resume_same_step(store: TaskStore):
 
     scheduler.tick("worker")
     with store.transaction() as conn:
-        conn.execute("UPDATE tasks SET status = ?, lease_owner = ?, lease_expires_at = ? WHERE id = ?", (TaskStatus.RUNNING.value, "dead-worker", "2000-01-01T00:00:00+00:00", task.id))
+        conn.execute(
+            "UPDATE tasks SET status = ?, lease_owner = ?, lease_expires_at = ? WHERE id = ?",
+            (TaskStatus.RUNNING.value, "dead-worker", "2000-01-01T00:00:00+00:00", task.id),
+        )
     recovered = store.recover_expired_running_tasks()
     assert task.id in recovered
 

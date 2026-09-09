@@ -1,0 +1,49 @@
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "swarm/local-single"
+      },
+      "skipBootstrap": true
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "swarm": {
+        "baseUrl": "http://127.0.0.1:8000/v1",
+        "apiKey": "local",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "local-single",
+            "name": "Swarm local model",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 16384,
+            "maxTokens": 512
+          }
+        ]
+      }
+    }
+  },
+  "tools": {
+    "allow": [
+      "read"
+    ],
+    "fs": {
+      "workspaceOnly": true
+    }
+  },
+  "plugins": {
+    "enabled": false
+  }
+}

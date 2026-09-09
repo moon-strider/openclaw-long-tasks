@@ -1,0 +1,82 @@
+{
+  "mode": "text",
+  "model": "local-swarm",
+  "expected": "OPENCLAW_OK",
+  "config": {
+    "agents": {
+      "defaults": {
+        "model": {
+          "primary": "test/local-swarm"
+        },
+        "skipBootstrap": true
+      }
+    },
+    "models": {
+      "mode": "merge",
+      "providers": {
+        "test": {
+          "baseUrl": "http://127.0.0.1:18942/v1",
+          "apiKey": "local",
+          "api": "openai-completions",
+          "models": [
+            {
+              "id": "local-swarm",
+              "name": "Local integration check",
+              "reasoning": false,
+              "input": [
+                "text"
+              ],
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "contextWindow": 16384,
+              "maxTokens": 512
+            }
+          ]
+        }
+      }
+    },
+    "tools": {
+      "deny": [
+        "*"
+      ]
+    },
+    "plugins": {
+      "enabled": false
+    }
+  },
+  "envelope": {
+    "ok": true,
+    "status": "ok",
+    "final": "OPENCLAW_OK",
+    "payloads": [
+      {
+        "text": "OPENCLAW_OK",
+        "mediaUrl": "/reply_to_current",
+        "mediaUrls": [
+          "/reply_to_current"
+        ]
+      }
+    ],
+    "usage": {
+      "input": 6894,
+      "output": 68,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 6962,
+      "cost": {
+        "total": 0
+      }
+    },
+    "costUsd": 0,
+    "codeModeEngaged": false,
+    "assistantTurns": 1,
+    "model": "local-swarm",
+    "provider": "test",
+    "sessionId": "2fece583-1ec4-4537-a44f-fde1636df26c"
+  },
+  "passed": true
+}

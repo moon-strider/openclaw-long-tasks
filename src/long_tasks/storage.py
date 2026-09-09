@@ -2,16 +2,25 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from contextlib import contextmanager
+from collections.abc import Iterator
+from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from .config import Settings
-from .models import AttemptStatus, Step, StepKind, StepStatus, Task, TaskStatus, ensure_step_transition, ensure_task_transition
-from .utils import ensure_parent, stable_json, utcnow
-
+from .models import (
+    AttemptStatus,
+    Step,
+    StepKind,
+    StepStatus,
+    Task,
+    TaskStatus,
+    ensure_step_transition,
+    ensure_task_transition,
+)
+from .utils import ensure_parent, new_id, stable_json, utcnow
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -138,15 +147,25 @@ class TaskStore:
         return conn
 
     def _initialize(self) -> None:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.executescript(SCHEMA)
-            columns = {row['name'] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()}
-            if 'reply_message_id' not in columns:
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()}
+            if "reply_message_id" not in columns:
                 conn.execute("ALTER TABLE tasks ADD COLUMN reply_message_id TEXT")
-            if 'final_report_max_chars' not in columns:
-                conn.execute("ALTER TABLE tasks ADD COLUMN final_report_max_chars INTEGER NOT NULL DEFAULT 4000")
-            if 'shared_state_json' not in columns:
-                conn.execute("ALTER TABLE tasks ADD COLUMN shared_state_json TEXT NOT NULL DEFAULT '{}' ")
+            if "final_report_max_chars" not in columns:
+                conn.execute(
+                    "ALTER TABLE tasks ADD COLUMN final_report_max_chars INTEGER NOT NULL DEFAULT 4000"
+                )
+            if "shared_state_json" not in columns:
+                conn.execute(
+                    "ALTER TABLE tasks ADD COLUMN shared_state_json TEXT NOT NULL DEFAULT '{}' "
+                )
+            notification_columns = {
+                row["name"] for row in conn.execute("PRAGMA table_info(notifications)")
+            }
+            for name in ["snapshot_json", "claim_token", "claim_expires_at", "next_attempt_at"]:
+                if name not in notification_columns:
+                    conn.execute(f"ALTER TABLE notifications ADD COLUMN {name} TEXT")
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
@@ -155,13 +174,16 @@ class TaskStore:
             conn.execute("BEGIN IMMEDIATE")
             yield conn
             conn.commit()
-        except Exception:
+        except BaseException:
             conn.rollback()
             raise
         finally:
             conn.close()
 
     def create_task(self, task: Task, steps: list[Step]) -> None:
+        from .validation import validate_task
+
+        validate_task(task, steps)
         with self.transaction() as conn:
             conn.execute(
                 """
@@ -231,25 +253,27 @@ class TaskStore:
                 )
 
     def list_tasks(self) -> list[Task]:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             rows = conn.execute("SELECT * FROM tasks ORDER BY next_run_at, created_at").fetchall()
         return [self._row_to_task(row) for row in rows]
 
     def get_task(self, task_id: str) -> Task | None:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
         return self._row_to_task(row) if row else None
 
     def get_steps(self, task_id: str) -> list[Step]:
-        with self._connect() as conn:
-            rows = conn.execute("SELECT * FROM steps WHERE task_id = ? ORDER BY step_index", (task_id,)).fetchall()
+        with closing(self._connect()) as conn, conn:
+            rows = conn.execute(
+                "SELECT * FROM steps WHERE task_id = ? ORDER BY step_index", (task_id,)
+            ).fetchall()
         return [self._row_to_step(row) for row in rows]
 
     def get_current_step(self, task_id: str) -> Step | None:
         task = self.get_task(task_id)
         if task is None:
             return None
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             row = conn.execute(
                 "SELECT * FROM steps WHERE task_id = ? AND step_index = ?",
                 (task_id, task.current_step_index),
@@ -257,28 +281,30 @@ class TaskStore:
         return self._row_to_step(row) if row else None
 
     def get_completed_steps(self, task_id: str) -> list[Step]:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             rows = conn.execute(
                 "SELECT * FROM steps WHERE task_id = ? AND status = ? ORDER BY step_index",
                 (task_id, StepStatus.DONE.value),
             ).fetchall()
         return [self._row_to_step(row) for row in rows]
 
-    def set_task_shared_state(self, conn: sqlite3.Connection, task_id: str, state: dict[str, Any]) -> None:
+    def set_task_shared_state(
+        self, conn: sqlite3.Connection, task_id: str, state: dict[str, Any]
+    ) -> None:
         conn.execute(
             "UPDATE tasks SET shared_state_json = ?, updated_at = ? WHERE id = ?",
             (stable_json(state), utcnow().isoformat(), task_id),
         )
 
     def list_attempts(self, task_id: str) -> list[sqlite3.Row]:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             return conn.execute(
                 "SELECT * FROM attempts WHERE task_id = ? ORDER BY started_at",
                 (task_id,),
             ).fetchall()
 
     def list_events(self, task_id: str, limit: int = 20) -> list[sqlite3.Row]:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             return conn.execute(
                 "SELECT * FROM events WHERE task_id = ? ORDER BY created_at DESC LIMIT ?",
                 (task_id, limit),
@@ -287,14 +313,14 @@ class TaskStore:
     def runnable_tasks(self, now=None) -> list[Task]:
         now = now or utcnow()
         now_str = now.isoformat()
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             rows = conn.execute(
                 """
                 SELECT * FROM tasks
                 WHERE status IN (?, ?)
                   AND next_run_at <= ?
                   AND (lease_owner IS NULL OR lease_expires_at IS NULL OR lease_expires_at < ?)
-                ORDER BY next_run_at, created_at
+                ORDER BY next_run_at, created_at LIMIT 100
                 """,
                 (TaskStatus.READY.value, TaskStatus.RUNNING.value, now_str, now_str),
             ).fetchall()
@@ -304,18 +330,32 @@ class TaskStore:
         now = now or utcnow()
         expiry = now + timedelta(seconds=self.settings.lease_ttl_seconds)
         with self.transaction() as conn:
-            current = conn.execute("SELECT lease_owner, lease_expires_at FROM tasks WHERE id = ?", (task_id,)).fetchone()
+            current = conn.execute(
+                "SELECT lease_owner, lease_expires_at FROM tasks WHERE id = ?", (task_id,)
+            ).fetchone()
             if current is None:
                 return None
-            prior_expired = current["lease_owner"] is not None and current["lease_expires_at"] is not None and current["lease_expires_at"] < now.isoformat()
+            prior_expired = (
+                current["lease_owner"] is not None
+                and current["lease_expires_at"] is not None
+                and current["lease_expires_at"] < now.isoformat()
+            )
             result = conn.execute(
                 """
                 UPDATE tasks
                 SET lease_owner = ?, lease_expires_at = ?, updated_at = ?
                 WHERE id = ?
-                  AND (lease_owner IS NULL OR lease_expires_at IS NULL OR lease_expires_at < ?)
+                  AND status IN ('ready', 'running') AND next_run_at <= ?
+                  AND (lease_owner IS NULL OR lease_expires_at IS NULL OR lease_expires_at <= ?)
                 """,
-                (worker_id, expiry.isoformat(), now.isoformat(), task_id, now.isoformat()),
+                (
+                    worker_id,
+                    expiry.isoformat(),
+                    now.isoformat(),
+                    task_id,
+                    now.isoformat(),
+                    now.isoformat(),
+                ),
             )
             if result.rowcount != 1:
                 return None
@@ -329,9 +369,10 @@ class TaskStore:
                 """
                 UPDATE tasks
                 SET lease_expires_at = ?, updated_at = ?
-                WHERE id = ? AND lease_owner = ?
+                WHERE id = ? AND lease_owner = ? AND lease_expires_at > ?
+                  AND status IN ('ready', 'running')
                 """,
-                (expiry.isoformat(), now.isoformat(), task_id, worker_id),
+                (expiry.isoformat(), now.isoformat(), task_id, worker_id, now.isoformat()),
             )
             return result.rowcount == 1
 
@@ -348,16 +389,24 @@ class TaskStore:
             )
             return result.rowcount == 1
 
-    def transition_task_status(self, conn: sqlite3.Connection, task_id: str, target: TaskStatus, **updates: Any) -> None:
+    def transition_task_status(
+        self, conn: sqlite3.Connection, task_id: str, target: TaskStatus, **updates: Any
+    ) -> None:
         current = conn.execute("SELECT status FROM tasks WHERE id = ?", (task_id,)).fetchone()
         if current is None:
             raise KeyError(task_id)
         current_status = TaskStatus(current["status"])
         ensure_task_transition(current_status, target)
-        payload = {"status": target.value, "updated_at": utcnow().isoformat(), **self._normalize_updates(updates)}
+        payload = {
+            "status": target.value,
+            "updated_at": utcnow().isoformat(),
+            **self._normalize_updates(updates),
+        }
         self._update_row(conn, "tasks", "id", task_id, payload)
 
-    def transition_step_status(self, conn: sqlite3.Connection, step_id: str, target: StepStatus, **updates: Any) -> None:
+    def transition_step_status(
+        self, conn: sqlite3.Connection, step_id: str, target: StepStatus, **updates: Any
+    ) -> None:
         current = conn.execute("SELECT status FROM steps WHERE id = ?", (step_id,)).fetchone()
         if current is None:
             raise KeyError(step_id)
@@ -366,26 +415,65 @@ class TaskStore:
         payload = {"status": target.value, **self._normalize_step_updates(updates)}
         self._update_row(conn, "steps", "id", step_id, payload)
 
-    def record_attempt_start(self, conn: sqlite3.Connection, attempt_id: str, task_id: str, step_id: str, role: str, worker_id: str, snapshot: dict[str, Any]) -> None:
+    def record_attempt_start(
+        self,
+        conn: sqlite3.Connection,
+        attempt_id: str,
+        task_id: str,
+        step_id: str,
+        role: str,
+        worker_id: str,
+        snapshot: dict[str, Any],
+    ) -> None:
         conn.execute(
             """
             INSERT INTO attempts (id, task_id, step_id, role, worker_id, started_at, status, input_snapshot_json)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (attempt_id, task_id, step_id, role, worker_id, utcnow().isoformat(), AttemptStatus.RETRY.value, stable_json(snapshot)),
+            (
+                attempt_id,
+                task_id,
+                step_id,
+                role,
+                worker_id,
+                utcnow().isoformat(),
+                AttemptStatus.RETRY.value,
+                stable_json(snapshot),
+            ),
         )
 
-    def record_attempt_finish(self, conn: sqlite3.Connection, attempt_id: str, status: AttemptStatus, output: dict[str, Any] | None = None, error_text: str | None = None) -> None:
+    def record_attempt_finish(
+        self,
+        conn: sqlite3.Connection,
+        attempt_id: str,
+        status: AttemptStatus,
+        output: dict[str, Any] | None = None,
+        error_text: str | None = None,
+    ) -> None:
         conn.execute(
             """
             UPDATE attempts
             SET finished_at = ?, status = ?, output_json = ?, error_text = ?
             WHERE id = ?
             """,
-            (utcnow().isoformat(), status.value, stable_json(output) if output is not None else None, error_text, attempt_id),
+            (
+                utcnow().isoformat(),
+                status.value,
+                stable_json(output) if output is not None else None,
+                error_text,
+                attempt_id,
+            ),
         )
 
-    def add_event(self, conn: sqlite3.Connection, event_id: str, task_id: str, event_type: str, payload: dict[str, Any], step_id: str | None = None) -> None:
+    def add_event(
+        self,
+        conn: sqlite3.Connection,
+        event_id: str,
+        task_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+        step_id: str | None = None,
+    ) -> None:
         conn.execute(
             """
             INSERT INTO events (id, task_id, step_id, type, created_at, payload_json)
@@ -394,7 +482,16 @@ class TaskStore:
             (event_id, task_id, step_id, event_type, utcnow().isoformat(), stable_json(payload)),
         )
 
-    def enqueue_notification(self, conn: sqlite3.Connection, notification_id: str, task_id: str, channel: str, target: str, message: str, event_id: str | None = None) -> None:
+    def enqueue_notification(
+        self,
+        conn: sqlite3.Connection,
+        notification_id: str,
+        task_id: str,
+        channel: str,
+        target: str,
+        message: str,
+        event_id: str | None = None,
+    ) -> None:
         conn.execute(
             """
             INSERT INTO notifications (id, task_id, event_id, channel, target, message, status, created_at, attempt_count)
@@ -404,47 +501,127 @@ class TaskStore:
         )
 
     def list_pending_notifications(self, limit: int = 100) -> list[sqlite3.Row]:
-        with self._connect() as conn:
+        now = utcnow().isoformat()
+        with closing(self._connect()) as conn:
             return conn.execute(
-                "SELECT * FROM notifications WHERE status = 'pending' ORDER BY created_at LIMIT ?",
-                (limit,),
+                "SELECT * FROM notifications WHERE (status='pending' AND (next_attempt_at IS NULL OR next_attempt_at<=?)) OR (status='sending' AND claim_expires_at<=?) ORDER BY created_at LIMIT ?",
+                (now, now, limit),
             ).fetchall()
 
-    def mark_notification_sent(self, notification_id: str) -> None:
-        now = utcnow().isoformat()
+    def claim_notification(self, notification_id: str, token: str):
+        now = utcnow()
         with self.transaction() as conn:
-            conn.execute(
-                "UPDATE notifications SET status = 'sent', sent_at = ?, last_attempt_at = ?, attempt_count = attempt_count + 1 WHERE id = ?",
-                (now, now, notification_id),
+            updated = conn.execute(
+                "UPDATE notifications SET status='sending',claim_token=?,claim_expires_at=?,last_attempt_at=?,attempt_count=attempt_count+1 WHERE id=? AND ((status='pending' AND (next_attempt_at IS NULL OR next_attempt_at<=?)) OR (status='sending' AND claim_expires_at<=?))",
+                (
+                    token,
+                    (now + timedelta(minutes=5)).isoformat(),
+                    now.isoformat(),
+                    notification_id,
+                    now.isoformat(),
+                    now.isoformat(),
+                ),
+            )
+            return (
+                conn.execute(
+                    "SELECT * FROM notifications WHERE id=?", (notification_id,)
+                ).fetchone()
+                if updated.rowcount
+                else None
             )
 
-    def mark_notification_failed(self, notification_id: str, error_text: str) -> None:
-        now = utcnow().isoformat()
+    def mark_notification_sent(self, notification_id: str, token: str) -> None:
         with self.transaction() as conn:
             conn.execute(
-                "UPDATE notifications SET status = 'pending', error_text = ?, last_attempt_at = ?, attempt_count = attempt_count + 1 WHERE id = ?",
-                (error_text, now, notification_id),
+                "UPDATE notifications SET status='sent',sent_at=?,error_text=NULL,claim_token=NULL,claim_expires_at=NULL WHERE id=? AND claim_token=?",
+                (utcnow().isoformat(), notification_id, token),
             )
 
-    def resume_task(self, task_id: str) -> Task:
+    def refresh_notification(self, notification_id: str, token: str) -> bool:
+        now = utcnow()
+        with self.transaction() as conn:
+            return (
+                conn.execute(
+                    "UPDATE notifications SET claim_expires_at=? WHERE id=? AND claim_token=? AND status='sending' AND claim_expires_at>?",
+                    (
+                        (now + timedelta(minutes=5)).isoformat(),
+                        notification_id,
+                        token,
+                        now.isoformat(),
+                    ),
+                ).rowcount
+                == 1
+            )
+
+    def mark_notification_failed(self, notification_id: str, error_text: str, token: str) -> None:
+        with self.transaction() as conn:
+            row = conn.execute(
+                "SELECT attempt_count FROM notifications WHERE id=? AND claim_token=?",
+                (notification_id, token),
+            ).fetchone()
+            if row is None:
+                return
+            retry_at = utcnow() + timedelta(seconds=min(3600, 30 * 2 ** min(row[0], 7)))
+            conn.execute(
+                "UPDATE notifications SET status=?,error_text=?,next_attempt_at=?,claim_token=NULL,claim_expires_at=NULL WHERE id=? AND claim_token=?",
+                (
+                    "dead" if row[0] >= 8 else "pending",
+                    error_text[:1024],
+                    retry_at.isoformat(),
+                    notification_id,
+                    token,
+                ),
+            )
+
+    def owns_lease(self, conn, task_id: str, token: str) -> bool:
+        return (
+            conn.execute(
+                "SELECT 1 FROM tasks WHERE id=? AND lease_owner=? AND lease_expires_at>? AND status IN ('ready','running')",
+                (task_id, token, utcnow().isoformat()),
+            ).fetchone()
+            is not None
+        )
+
+    def resume_task(self, task_id: str, user_reply: str | None = None) -> Task:
+        if user_reply is not None and (not user_reply.strip() or len(user_reply) > 16384):
+            raise ValueError("Reply must contain 1–16384 characters")
         with self.transaction() as conn:
             row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
             if row is None:
                 raise KeyError(task_id)
-            status = TaskStatus(row["status"])
-            if status not in {TaskStatus.WAITING_USER, TaskStatus.BLOCKED, TaskStatus.FAILED}:
-                raise ValueError(f"Task {task_id} cannot be resumed from {status}")
+            if TaskStatus(row["status"]) not in {
+                TaskStatus.WAITING_USER,
+                TaskStatus.BLOCKED,
+                TaskStatus.FAILED,
+            }:
+                raise ValueError("Task is not waiting, blocked or failed")
+            state = json.loads(row["shared_state_json"])
+            if user_reply is not None:
+                state["user_reply"] = {"prompt": row["waiting_prompt"], "text": user_reply}
             self.transition_task_status(
                 conn,
                 task_id,
                 TaskStatus.READY,
                 waiting_prompt=None,
-                next_run_at=utcnow().isoformat(),
+                waiting_alert_hash=None,
+                waiting_alert_sent_at=None,
+                next_run_at=utcnow(),
                 last_error=None,
+                lease_owner=None,
+                lease_expires_at=None,
+                shared_state_json=state,
             )
-        task = self.get_task(task_id)
-        assert task is not None
-        return task
+            # An explicit resume grants a new attempt budget; attempt history is retained.
+            conn.execute(
+                "UPDATE steps SET status='pending',attempt_count=0,started_at=NULL,finished_at=NULL WHERE task_id=? AND step_index=? AND status!='done'",
+                (task_id, row["current_step_index"]),
+            )
+            self.add_event(
+                conn, new_id(), task_id, "task.resumed", {"reply_supplied": user_reply is not None}
+            )
+        resumed = self.get_task(task_id)
+        assert resumed is not None
+        return resumed
 
     def cancel_task(self, task_id: str) -> Task:
         with self.transaction() as conn:
@@ -454,7 +631,18 @@ class TaskStore:
             status = TaskStatus(row["status"])
             if status in {TaskStatus.COMPLETED, TaskStatus.CANCELLED}:
                 raise ValueError(f"Task {task_id} is already terminal")
-            self.transition_task_status(conn, task_id, TaskStatus.CANCELLED, lease_owner=None, lease_expires_at=None)
+            self.transition_task_status(
+                conn, task_id, TaskStatus.CANCELLED, lease_owner=None, lease_expires_at=None
+            )
+            conn.execute(
+                "UPDATE steps SET status='blocked',finished_at=?,result_summary='task cancelled' WHERE task_id=? AND status='in_progress'",
+                (utcnow().isoformat(), task_id),
+            )
+            conn.execute(
+                "UPDATE attempts SET status='failed',finished_at=?,error_text='task cancelled' WHERE task_id=? AND finished_at IS NULL",
+                (utcnow().isoformat(), task_id),
+            )
+            self.add_event(conn, new_id(), task_id, "task.cancelled", {})
         task = self.get_task(task_id)
         assert task is not None
         return task
@@ -467,8 +655,7 @@ class TaskStore:
                 """
                 SELECT id FROM tasks
                 WHERE status = ?
-                  AND lease_owner IS NOT NULL
-                  AND lease_expires_at < ?
+                  AND (lease_owner IS NULL OR lease_expires_at IS NULL OR lease_expires_at <= ?)
                 """,
                 (TaskStatus.RUNNING.value, now.isoformat()),
             ).fetchall()
@@ -482,6 +669,15 @@ class TaskStore:
                     """,
                     (TaskStatus.READY.value, now.isoformat(), now.isoformat(), task_id),
                 )
+                conn.execute(
+                    "UPDATE steps SET status='pending',started_at=NULL WHERE task_id=? AND status='in_progress'",
+                    (task_id,),
+                )
+                conn.execute(
+                    "UPDATE attempts SET status='retry',finished_at=?,error_text='lease expired before checkpoint' WHERE task_id=? AND finished_at IS NULL",
+                    (now.isoformat(), task_id),
+                )
+                self.add_event(conn, new_id(), task_id, "lease.recovered", {})
                 recovered.append(task_id)
         return recovered
 
@@ -506,7 +702,14 @@ class TaskStore:
             normalized["artifact_paths_json"] = normalized.pop("artifact_paths")
         return normalized
 
-    def _update_row(self, conn: sqlite3.Connection, table: str, pk_name: str, pk_value: str, updates: dict[str, Any]) -> None:
+    def _update_row(
+        self,
+        conn: sqlite3.Connection,
+        table: str,
+        pk_name: str,
+        pk_value: str,
+        updates: dict[str, Any],
+    ) -> None:
         assignments = ", ".join(f"{column} = ?" for column in updates)
         values = list(updates.values()) + [pk_value]
         conn.execute(f"UPDATE {table} SET {assignments} WHERE {pk_name} = ?", values)
@@ -526,13 +729,17 @@ class TaskStore:
             current_step_index=row["current_step_index"],
             next_run_at=self._parse_dt(row["next_run_at"]),
             lease_owner=row["lease_owner"],
-            lease_expires_at=self._parse_dt(row["lease_expires_at"]) if row["lease_expires_at"] else None,
+            lease_expires_at=self._parse_dt(row["lease_expires_at"])
+            if row["lease_expires_at"]
+            else None,
             retry_budget=row["retry_budget"],
             last_error=row["last_error"],
             last_summary=row["last_summary"],
             waiting_prompt=row["waiting_prompt"],
             waiting_alert_hash=row["waiting_alert_hash"],
-            waiting_alert_sent_at=self._parse_dt(row["waiting_alert_sent_at"]) if row["waiting_alert_sent_at"] else None,
+            waiting_alert_sent_at=self._parse_dt(row["waiting_alert_sent_at"])
+            if row["waiting_alert_sent_at"]
+            else None,
             notify_channel=row["notify_channel"],
             notify_chat_id=row["notify_chat_id"],
             notify_message_ref=row["notify_message_ref"],

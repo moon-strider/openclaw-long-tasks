@@ -1,0 +1,50 @@
+[
+  {
+    "id": "maker-d3-s11",
+    "fingerprint": "412eacf5dbc18bafdf1b83dfdc5c654ebd11fa0374d433f7a47b26581a75cda4",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":11,\"temperature\":0.7,\"timeout_seconds\":120},\"task\":{\"disks\":3,\"prompt_mode\":\"phase\",\"state_mode\":\"deterministic\",\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":4},\"voting\":{\"concurrency\":3,\"k\":3,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":12,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[3],[2],[1]],\"step\":2}",
+    "steps": 2,
+    "calls": 18,
+    "status": "blocked",
+    "error": "Voting budget exhausted before reaching the required margin",
+    "created": 1788958110.783004,
+    "updated": 1788958144.8278334
+  },
+  {
+    "id": "maker-d4-s11",
+    "fingerprint": "aff770a7af42092fde61c11537b334db9948236748eb4461542dde20ff6c494e",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":11,\"temperature\":0.7,\"timeout_seconds\":120},\"task\":{\"disks\":4,\"prompt_mode\":\"phase\",\"state_mode\":\"deterministic\",\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":4},\"voting\":{\"concurrency\":3,\"k\":3,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":12,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[4,3,2],[1],[]],\"step\":1}",
+    "steps": 1,
+    "calls": 15,
+    "status": "blocked",
+    "error": "Voting budget exhausted before reaching the required margin",
+    "created": 1788958245.2428367,
+    "updated": 1788958283.9074295
+  },
+  {
+    "id": "steps-d3-s11",
+    "fingerprint": "ec918f8b196f2b2655dc88dd3d290c277ea472630de925d7ddf8ae1c7906fda4",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":11,\"temperature\":0.7,\"timeout_seconds\":120},\"task\":{\"disks\":3,\"prompt_mode\":\"phase\",\"state_mode\":\"deterministic\",\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":4},\"voting\":{\"concurrency\":1,\"k\":1,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":12,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[3],[2],[1]],\"step\":2}",
+    "steps": 2,
+    "calls": 14,
+    "status": "blocked",
+    "error": "Voting budget exhausted before reaching the required margin",
+    "created": 1788958068.6603835,
+    "updated": 1788958110.7661083
+  },
+  {
+    "id": "steps-d4-s11",
+    "fingerprint": "3e3b1ca0326c502803a1877765aac398a9b522d3e845e10f637b2ce594b38774",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":11,\"temperature\":0.7,\"timeout_seconds\":120},\"task\":{\"disks\":4,\"prompt_mode\":\"phase\",\"state_mode\":\"deterministic\",\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":4},\"voting\":{\"concurrency\":1,\"k\":1,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":12,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[4,3,2],[1],[]],\"step\":1}",
+    "steps": 1,
+    "calls": 13,
+    "status": "blocked",
+    "error": "Voting budget exhausted before reaching the required margin",
+    "created": 1788958180.1738474,
+    "updated": 1788958245.2174842
+  }
+]

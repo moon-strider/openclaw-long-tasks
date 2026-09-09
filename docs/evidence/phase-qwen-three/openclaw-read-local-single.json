@@ -1,0 +1,94 @@
+{
+  "mode": "read",
+  "model": "local-single",
+  "expected": "read-7dc758c3981b4e9789136e242091819c",
+  "config": {
+    "agents": {
+      "defaults": {
+        "model": {
+          "primary": "test/local-single"
+        },
+        "skipBootstrap": true
+      }
+    },
+    "models": {
+      "mode": "merge",
+      "providers": {
+        "test": {
+          "baseUrl": "http://127.0.0.1:18942/v1",
+          "apiKey": "local",
+          "api": "openai-completions",
+          "models": [
+            {
+              "id": "local-single",
+              "name": "Local integration check",
+              "reasoning": false,
+              "input": [
+                "text"
+              ],
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "contextWindow": 16384,
+              "maxTokens": 512
+            }
+          ]
+        }
+      }
+    },
+    "tools": {
+      "allow": [
+        "read"
+      ],
+      "fs": {
+        "workspaceOnly": true
+      }
+    },
+    "plugins": {
+      "enabled": false
+    }
+  },
+  "envelope": {
+    "ok": true,
+    "status": "ok",
+    "final": "The exact contents of `sentinel.txt` are:\n\n```\nThis is a sentinel file. It contains the exact text you requested.\n```",
+    "payloads": [
+      {
+        "text": "The exact contents of `sentinel.txt` are:\n\n```\nThis is a sentinel file. It contains the exact text you requested.\n```",
+        "mediaUrl": null
+      }
+    ],
+    "usage": {
+      "input": 13201,
+      "output": 90,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 13291,
+      "cost": {
+        "total": 0
+      }
+    },
+    "costUsd": 0,
+    "codeModeEngaged": false,
+    "assistantTurns": 3,
+    "bridgeCalls": {
+      "search": 0,
+      "describe": 0,
+      "call": 0
+    },
+    "toolSummary": {
+      "calls": 2,
+      "tools": [
+        "read"
+      ],
+      "failures": 0
+    },
+    "model": "local-single",
+    "provider": "test",
+    "sessionId": "330abb7a-565c-4beb-a540-25b917eedbde"
+  },
+  "passed": false
+}

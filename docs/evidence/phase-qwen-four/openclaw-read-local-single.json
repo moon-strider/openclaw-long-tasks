@@ -1,0 +1,94 @@
+{
+  "mode": "read",
+  "model": "local-single",
+  "expected": "read-e6ea910ad5ef4616990c224c51eaa2e0",
+  "config": {
+    "agents": {
+      "defaults": {
+        "model": {
+          "primary": "test/local-single"
+        },
+        "skipBootstrap": true
+      }
+    },
+    "models": {
+      "mode": "merge",
+      "providers": {
+        "test": {
+          "baseUrl": "http://127.0.0.1:18942/v1",
+          "apiKey": "local",
+          "api": "openai-completions",
+          "models": [
+            {
+              "id": "local-single",
+              "name": "Local integration check",
+              "reasoning": false,
+              "input": [
+                "text"
+              ],
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "contextWindow": 16384,
+              "maxTokens": 512
+            }
+          ]
+        }
+      }
+    },
+    "tools": {
+      "allow": [
+        "read"
+      ],
+      "fs": {
+        "workspaceOnly": true
+      }
+    },
+    "plugins": {
+      "enabled": false
+    }
+  },
+  "envelope": {
+    "ok": true,
+    "status": "ok",
+    "final": "The exact contents of sentinel.txt are:\ne6ea910ad5ef4616990c224c51eaa2e0",
+    "payloads": [
+      {
+        "text": "The exact contents of sentinel.txt are:\ne6ea910ad5ef4616990c224c51eaa2e0",
+        "mediaUrl": null
+      }
+    ],
+    "usage": {
+      "input": 8731,
+      "output": 58,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 8789,
+      "cost": {
+        "total": 0
+      }
+    },
+    "costUsd": 0,
+    "codeModeEngaged": false,
+    "assistantTurns": 2,
+    "bridgeCalls": {
+      "search": 0,
+      "describe": 0,
+      "call": 0
+    },
+    "toolSummary": {
+      "calls": 1,
+      "tools": [
+        "read"
+      ],
+      "failures": 0
+    },
+    "model": "local-single",
+    "provider": "test",
+    "sessionId": "f51619fd-d3ca-45ea-9915-0ad5af857ab4"
+  },
+  "passed": false
+}

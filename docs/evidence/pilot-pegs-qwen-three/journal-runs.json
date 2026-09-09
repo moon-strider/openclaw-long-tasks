@@ -1,0 +1,50 @@
+[
+  {
+    "id": "maker-d3-s11",
+    "fingerprint": "f9889c3f06876a7178faac998f8fbf71997c19945027b4d39a7632264d21eb73",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":11,\"temperature\":0.1,\"timeout_seconds\":120},\"task\":{\"disks\":3,\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":1},\"voting\":{\"concurrency\":3,\"k\":3,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":24,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[3,2,1],[],[]],\"step\":0}",
+    "steps": 0,
+    "calls": 24,
+    "status": "blocked",
+    "error": "Voting budget exhausted before reaching the required margin",
+    "created": 1788954306.3929431,
+    "updated": 1788954433.1293063
+  },
+  {
+    "id": "maker-d3-s29",
+    "fingerprint": "2269140c84c0f2abf32ae92cd521a553e8d8b5bce6867df935c898b4745a473f",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":29,\"temperature\":0.1,\"timeout_seconds\":120},\"task\":{\"disks\":3,\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":1},\"voting\":{\"concurrency\":3,\"k\":3,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":24,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[3,2,1],[],[]],\"step\":0}",
+    "steps": 0,
+    "calls": 3,
+    "status": "running",
+    "error": null,
+    "created": 1788954632.5421565,
+    "updated": 1788954632.5425029
+  },
+  {
+    "id": "steps-d3-s11",
+    "fingerprint": "309b78e37497e966ab77bdcb15f50c447782ff14666ba31f6badf5acf9b0c72b",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":11,\"temperature\":0.1,\"timeout_seconds\":120},\"task\":{\"disks\":3,\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":1},\"voting\":{\"concurrency\":1,\"k\":1,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":24,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[3,2,1],[],[]],\"step\":0}",
+    "steps": 0,
+    "calls": 24,
+    "status": "blocked",
+    "error": "Voting budget exhausted before reaching the required margin",
+    "created": 1788954164.266183,
+    "updated": 1788954306.3715253
+  },
+  {
+    "id": "steps-d3-s29",
+    "fingerprint": "a9f6d3b58194801818162418f65c73a179aaf5bdd624afdf7f653587ee2cd248",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":29,\"temperature\":0.1,\"timeout_seconds\":120},\"task\":{\"disks\":3,\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":1},\"voting\":{\"concurrency\":1,\"k\":1,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":24,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[3,2,1],[],[]],\"step\":0}",
+    "steps": 0,
+    "calls": 24,
+    "status": "blocked",
+    "error": "Voting budget exhausted before reaching the required margin",
+    "created": 1788954451.6758668,
+    "updated": 1788954632.5251074
+  }
+]

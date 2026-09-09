@@ -1,0 +1,50 @@
+[
+  {
+    "id": "maker-d3-s11",
+    "fingerprint": "1766a4065c62519deb03a0c769275e8978524d6c7d19d5088875b4c2646e5d2e",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":11,\"temperature\":0.7,\"timeout_seconds\":120},\"task\":{\"disks\":3,\"prompt_mode\":\"micro\",\"state_mode\":\"deterministic\",\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":4},\"voting\":{\"concurrency\":3,\"k\":3,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":12,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[1],[3],[2]],\"step\":7}",
+    "steps": 7,
+    "calls": 27,
+    "status": "blocked",
+    "error": "Step budget exhausted before reaching the task goal",
+    "created": 1788958657.590939,
+    "updated": 1788958732.523568
+  },
+  {
+    "id": "maker-d4-s11",
+    "fingerprint": "ffe3b5a13458e4de2cdef989fcbd2b0eefff513164fed8b8eb2c6f601c2c2d88",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":11,\"temperature\":0.7,\"timeout_seconds\":120},\"task\":{\"disks\":4,\"prompt_mode\":\"micro\",\"state_mode\":\"deterministic\",\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":4},\"voting\":{\"concurrency\":3,\"k\":3,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":12,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[2,1],[3],[4]],\"step\":11}",
+    "steps": 11,
+    "calls": 51,
+    "status": "blocked",
+    "error": "Voting budget exhausted before reaching the required margin",
+    "created": 1788958798.723233,
+    "updated": 1788958923.698062
+  },
+  {
+    "id": "steps-d3-s11",
+    "fingerprint": "c65dc10e6e650e05e42fbedd626f3ac84061d0739c9b20d68793de38e4eb7369",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":11,\"temperature\":0.7,\"timeout_seconds\":120},\"task\":{\"disks\":3,\"prompt_mode\":\"micro\",\"state_mode\":\"deterministic\",\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":4},\"voting\":{\"concurrency\":1,\"k\":1,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":12,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[1],[3],[2]],\"step\":7}",
+    "steps": 7,
+    "calls": 9,
+    "status": "blocked",
+    "error": "Step budget exhausted before reaching the task goal",
+    "created": 1788958605.785352,
+    "updated": 1788958657.5718648
+  },
+  {
+    "id": "steps-d4-s11",
+    "fingerprint": "ca3b49099d98f9d41b1eb43942ebbab0178e7589e28b7c82bc9f81f370b57ca9",
+    "specification": "{\"protocol\":1,\"sampler\":{\"api_key_env\":\"MAKER_API_KEY\",\"base_url\":\"http://127.0.0.1:18942/v1\",\"implementation\":\"openai-compatible-v1\",\"max_response_bytes\":65536,\"max_tokens\":256,\"model\":\"local-single\",\"seed\":11,\"temperature\":0.7,\"timeout_seconds\":120},\"task\":{\"disks\":4,\"prompt_mode\":\"micro\",\"state_mode\":\"deterministic\",\"task\":\"hanoi\",\"validation\":\"legal_move_and_state_consistency\",\"version\":4},\"voting\":{\"concurrency\":1,\"k\":1,\"max_calls\":1000,\"max_response_bytes\":8192,\"max_samples\":12,\"retain_responses\":true,\"step_timeout\":300}}",
+    "state": "{\"pegs\":[[4,3,1],[],[2]],\"step\":15}",
+    "steps": 15,
+    "calls": 16,
+    "status": "blocked",
+    "error": "Step budget exhausted before reaching the task goal",
+    "created": 1788958756.8457742,
+    "updated": 1788958798.7076578
+  }
+]

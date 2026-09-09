@@ -1,0 +1,30 @@
+{
+  "model_file": "Qwen3-4B-Q4_K_M.gguf",
+  "llama_arguments": [
+    "/workspace/scratch/8a803cd8931f/local-llm-test/runtime/llama-b10867/llama-server",
+    "-m",
+    "/workspace/scratch/8a803cd8931f/local-llm-test/models/Qwen3-4B-Q4_K_M.gguf",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "18941",
+    "--alias",
+    "local-model",
+    "-c",
+    "16384",
+    "-t",
+    "4",
+    "-tb",
+    "4",
+    "-np",
+    "1",
+    "-ngl",
+    "0",
+    "--jinja",
+    "--chat-template-kwargs",
+    "{\"enable_thinking\":false}",
+    "--reasoning",
+    "off"
+  ],
+  "swarm_commit": "8a9146b907bedc1fde0f8ee87afd1125ff314855"
+}
