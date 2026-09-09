@@ -1,0 +1,39 @@
+{
+  "run_id": "stress",
+  "status": "completed",
+  "steps": 10000,
+  "calls": 50001,
+  "state": 10000,
+  "error": null,
+  "samples": {
+    "rejected": 10001,
+    "valid": 40000
+  },
+  "red_flags": {
+    "invalid_candidate": 10001
+  },
+  "specification": {
+    "protocol": 1,
+    "sampler": {
+      "implementation": "deterministic_stress_fixture",
+      "llm": false
+    },
+    "task": {
+      "steps": 10000,
+      "task": "deterministic_counter_fixture"
+    },
+    "voting": {
+      "concurrency": 3,
+      "k": 3,
+      "max_calls": 100000,
+      "max_response_bytes": 8192,
+      "max_samples": 24,
+      "retain_responses": false,
+      "step_timeout": 300
+    }
+  },
+  "llm": false,
+  "interrupted_after": 5000,
+  "integrity_verified": true,
+  "elapsed_seconds": 42.855
+}

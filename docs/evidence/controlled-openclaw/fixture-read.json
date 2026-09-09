@@ -1,0 +1,83 @@
+{
+  "mode": "read",
+  "model": "local-single",
+  "expected": "read-9aa1c5386a1c48a98f3be7aaa8b6cd3e",
+  "config": {
+    "agents": {
+      "defaults": {
+        "model": {
+          "primary": "test/local-single"
+        },
+        "skipBootstrap": true
+      }
+    },
+    "models": {
+      "mode": "merge",
+      "providers": {
+        "test": {
+          "baseUrl": "http://127.0.0.1:18952/v1",
+          "apiKey": "local",
+          "api": "openai-completions",
+          "models": [
+            {
+              "id": "local-single",
+              "name": "Local integration check",
+              "reasoning": false,
+              "input": [
+                "text"
+              ],
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "contextWindow": 16384,
+              "maxTokens": 512
+            }
+          ]
+        }
+      }
+    },
+    "tools": {
+      "allow": [
+        "read"
+      ],
+      "fs": {
+        "workspaceOnly": true
+      }
+    },
+    "plugins": {
+      "enabled": false
+    }
+  },
+  "envelope": {
+    "ok": true,
+    "status": "ok",
+    "final": "read-9aa1c5386a1c48a98f3be7aaa8b6cd3e",
+    "payloads": [
+      {
+        "text": "read-9aa1c5386a1c48a98f3be7aaa8b6cd3e",
+        "mediaUrl": null
+      }
+    ],
+    "codeModeEngaged": false,
+    "assistantTurns": 2,
+    "bridgeCalls": {
+      "search": 0,
+      "describe": 0,
+      "call": 0
+    },
+    "toolSummary": {
+      "calls": 1,
+      "tools": [
+        "read"
+      ],
+      "failures": 0
+    },
+    "model": "local-single",
+    "provider": "test",
+    "sessionId": "13b86248-98b1-4be2-8546-768257d6bf1d"
+  },
+  "passed": true
+}

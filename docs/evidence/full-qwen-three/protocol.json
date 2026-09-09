@@ -1,0 +1,41 @@
+{
+  "protocol": 2,
+  "state_mode": "deterministic",
+  "prompt_mode": "full",
+  "disks": [
+    2,
+    3,
+    4
+  ],
+  "seeds": [
+    11,
+    29
+  ],
+  "model": "local-single",
+  "base_url": "http://127.0.0.1:18942/v1",
+  "temperature": 0.7,
+  "k": 3,
+  "max_samples": 12,
+  "modes": [
+    "whole",
+    "steps",
+    "maker"
+  ],
+  "validation": "legal_move_and_state_consistency",
+  "oracle": "evaluation_only",
+  "started_at": "2026-09-09T12:08:36Z",
+  "prompts": {
+    "2": {
+      "whole": "Solve Towers of Hanoi by the iterative algorithm. Pegs are 0, 1, 2. Disks are numbered smallest=1. Each peg array is ordered bottom-to-top. Move all disks from peg 0 to peg 2. Move exactly one top disk at a time, never placing a larger disk on a smaller disk. For an ODD number of disks, disk 1 follows the cycle 0 -> 2 -> 1 -> 0. For an EVEN number of disks, disk 1 follows 0 -> 1 -> 2 -> 0. On odd-numbered moves move disk 1 along its cycle. On even-numbered moves make the only legal move between the two pegs that do not contain disk 1. Update the arrays by removing the moved disk from the END of its source array and appending that disk to the END of its destination array. Every other disk stays in its original array. Peg numbers are array indexes, never disk values.\nNumber of disks: 2. Initial pegs: [[2, 1], [], []]. Return all 3 moves in order. Reply only with JSON {\"moves\": [[disk, source, target], ...]}. No markdown or commentary. /no_think",
+      "initial_step": "Solve Towers of Hanoi by the iterative algorithm. Pegs are 0, 1, 2. Disks are numbered smallest=1. Each peg array is ordered bottom-to-top. Move all disks from peg 0 to peg 2. Move exactly one top disk at a time, never placing a larger disk on a smaller disk. For an ODD number of disks, disk 1 follows the cycle 0 -> 2 -> 1 -> 0. For an EVEN number of disks, disk 1 follows 0 -> 1 -> 2 -> 0. On odd-numbered moves move disk 1 along its cycle. On even-numbered moves make the only legal move between the two pegs that do not contain disk 1. Update the arrays by removing the moved disk from the END of its source array and appending that disk to the END of its destination array. Every other disk stays in its original array. Peg numbers are array indexes, never disk values.\nThere are 2 disks. Next move number: 1.\nCurrent pegs (bottom-to-top): [[2, 1], [], []].\nChoose exactly ONE next move. Return only JSON {\"move\":[disk,source,target]}. Use integer values, not strings. No markdown or explanation. /no_think"
+    },
+    "3": {
+      "whole": "Solve Towers of Hanoi by the iterative algorithm. Pegs are 0, 1, 2. Disks are numbered smallest=1. Each peg array is ordered bottom-to-top. Move all disks from peg 0 to peg 2. Move exactly one top disk at a time, never placing a larger disk on a smaller disk. For an ODD number of disks, disk 1 follows the cycle 0 -> 2 -> 1 -> 0. For an EVEN number of disks, disk 1 follows 0 -> 1 -> 2 -> 0. On odd-numbered moves move disk 1 along its cycle. On even-numbered moves make the only legal move between the two pegs that do not contain disk 1. Update the arrays by removing the moved disk from the END of its source array and appending that disk to the END of its destination array. Every other disk stays in its original array. Peg numbers are array indexes, never disk values.\nNumber of disks: 3. Initial pegs: [[3, 2, 1], [], []]. Return all 7 moves in order. Reply only with JSON {\"moves\": [[disk, source, target], ...]}. No markdown or commentary. /no_think",
+      "initial_step": "Solve Towers of Hanoi by the iterative algorithm. Pegs are 0, 1, 2. Disks are numbered smallest=1. Each peg array is ordered bottom-to-top. Move all disks from peg 0 to peg 2. Move exactly one top disk at a time, never placing a larger disk on a smaller disk. For an ODD number of disks, disk 1 follows the cycle 0 -> 2 -> 1 -> 0. For an EVEN number of disks, disk 1 follows 0 -> 1 -> 2 -> 0. On odd-numbered moves move disk 1 along its cycle. On even-numbered moves make the only legal move between the two pegs that do not contain disk 1. Update the arrays by removing the moved disk from the END of its source array and appending that disk to the END of its destination array. Every other disk stays in its original array. Peg numbers are array indexes, never disk values.\nThere are 3 disks. Next move number: 1.\nCurrent pegs (bottom-to-top): [[3, 2, 1], [], []].\nChoose exactly ONE next move. Return only JSON {\"move\":[disk,source,target]}. Use integer values, not strings. No markdown or explanation. /no_think"
+    },
+    "4": {
+      "whole": "Solve Towers of Hanoi by the iterative algorithm. Pegs are 0, 1, 2. Disks are numbered smallest=1. Each peg array is ordered bottom-to-top. Move all disks from peg 0 to peg 2. Move exactly one top disk at a time, never placing a larger disk on a smaller disk. For an ODD number of disks, disk 1 follows the cycle 0 -> 2 -> 1 -> 0. For an EVEN number of disks, disk 1 follows 0 -> 1 -> 2 -> 0. On odd-numbered moves move disk 1 along its cycle. On even-numbered moves make the only legal move between the two pegs that do not contain disk 1. Update the arrays by removing the moved disk from the END of its source array and appending that disk to the END of its destination array. Every other disk stays in its original array. Peg numbers are array indexes, never disk values.\nNumber of disks: 4. Initial pegs: [[4, 3, 2, 1], [], []]. Return all 15 moves in order. Reply only with JSON {\"moves\": [[disk, source, target], ...]}. No markdown or commentary. /no_think",
+      "initial_step": "Solve Towers of Hanoi by the iterative algorithm. Pegs are 0, 1, 2. Disks are numbered smallest=1. Each peg array is ordered bottom-to-top. Move all disks from peg 0 to peg 2. Move exactly one top disk at a time, never placing a larger disk on a smaller disk. For an ODD number of disks, disk 1 follows the cycle 0 -> 2 -> 1 -> 0. For an EVEN number of disks, disk 1 follows 0 -> 1 -> 2 -> 0. On odd-numbered moves move disk 1 along its cycle. On even-numbered moves make the only legal move between the two pegs that do not contain disk 1. Update the arrays by removing the moved disk from the END of its source array and appending that disk to the END of its destination array. Every other disk stays in its original array. Peg numbers are array indexes, never disk values.\nThere are 4 disks. Next move number: 1.\nCurrent pegs (bottom-to-top): [[4, 3, 2, 1], [], []].\nChoose exactly ONE next move. Return only JSON {\"move\":[disk,source,target]}. Use integer values, not strings. No markdown or explanation. /no_think"
+    }
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "protocol_sha256": "dec02e224c6918618aacc426f5a051330c0b8a971f3599a22cb19412985169f2",
+  "runs": [
+    {
+      "run_id": "whole-d3-s11",
+      "mode": "whole",
+      "disks": 3,
+      "seed": 11,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.1,
+        "seed": 11,
+        "max_tokens": 1024,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "sample": {
+        "text": "{\"moves\": [[3, 0, 2], [1, 0, 2], [3, 0, 1], [2, 1, 0], [3, 0, 1], [1, 2, 0], [2, 1, 0]]}",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 288,
+          "completion_tokens": 68,
+          "total_tokens": 356
+        }
+      },
+      "calls": 1,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 7,
+        "observed_steps": 7,
+        "legal": false,
+        "error": "disk is not on top of its source",
+        "final_pegs": [
+          [
+            3,
+            2,
+            1
+          ],
+          [],
+          []
+        ]
+      },
+      "moves": [
+        [
+          3,
+          0,
+          2
+        ],
+        [
+          1,
+          0,
+          2
+        ],
+        [
+          3,
+          0,
+          1
+        ],
+        [
+          2,
+          1,
+          0
+        ],
+        [
+          3,
+          0,
+          1
+        ],
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          2,
+          1,
+          0
+        ]
+      ],
+      "elapsed_seconds": 21.827,
+      "passed": false
+    },
+    {
+      "run_id": "steps-d3-s11",
+      "mode": "steps",
+      "disks": 3,
+      "seed": 11,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.1,
+        "seed": 11,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "steps-d3-s11",
+        "status": "blocked",
+        "steps": 0,
+        "calls": 24,
+        "state": {
+          "pegs": [
+            [
+              3,
+              2,
+              1
+            ],
+            [],
+            []
+          ],
+          "step": 0
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 24
+        },
+        "red_flags": {
+          "invalid_candidate": 24
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 11,
+            "temperature": 0.1,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 3,
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 2
+          },
+          "voting": {
+            "concurrency": 1,
+            "k": 1,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 24,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 24,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 7,
+        "observed_steps": 0,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            3,
+            2,
+            1
+          ],
+          [],
+          []
+        ]
+      },
+      "moves": [],
+      "elapsed_seconds": 136.215,
+      "passed": false
+    }
+  ]
+}

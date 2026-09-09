@@ -1,0 +1,1759 @@
+{
+  "protocol_sha256": "03b6d3999d8b9a9848a3d3764155ef526c50d992bbe0179fd4c40efcaae292c6",
+  "runs": [
+    {
+      "run_id": "whole-d2-s11",
+      "mode": "whole",
+      "disks": 2,
+      "seed": 11,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 11,
+        "max_tokens": 1024,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "sample": {
+        "text": "{\"moves\": [[1, 0, 2], [1, 0, 1], [2, 1, 2]]}",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 285,
+          "completion_tokens": 32,
+          "total_tokens": 317
+        }
+      },
+      "calls": 1,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 3,
+        "observed_steps": 3,
+        "legal": false,
+        "error": "disk is not on top of its source",
+        "final_pegs": [
+          [
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          2,
+          1,
+          2
+        ]
+      ],
+      "elapsed_seconds": 10.038,
+      "passed": false
+    },
+    {
+      "run_id": "steps-d2-s11",
+      "mode": "steps",
+      "disks": 2,
+      "seed": 11,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 11,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "steps-d2-s11",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 13,
+        "state": {
+          "pegs": [
+            [
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 1
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 11,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 2,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 1,
+            "k": 1,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 13,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 3,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 44.029,
+      "passed": false
+    },
+    {
+      "run_id": "maker-d2-s11",
+      "mode": "maker",
+      "disks": 2,
+      "seed": 11,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 11,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "maker-d2-s11",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 15,
+        "state": {
+          "pegs": [
+            [
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 3
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 11,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 2,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 3,
+            "k": 3,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 15,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 3,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 29.622,
+      "passed": false
+    },
+    {
+      "run_id": "whole-d2-s29",
+      "mode": "whole",
+      "disks": 2,
+      "seed": 29,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 29,
+        "max_tokens": 1024,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "sample": {
+        "text": "{\"moves\": [[1, 0, 2], [1, 0, 1], [2, 1, 2]]}",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 285,
+          "completion_tokens": 32,
+          "total_tokens": 317
+        }
+      },
+      "calls": 1,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 3,
+        "observed_steps": 3,
+        "legal": false,
+        "error": "disk is not on top of its source",
+        "final_pegs": [
+          [
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          2,
+          1,
+          2
+        ]
+      ],
+      "elapsed_seconds": 8.047,
+      "passed": false
+    },
+    {
+      "run_id": "steps-d2-s29",
+      "mode": "steps",
+      "disks": 2,
+      "seed": 29,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 29,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "steps-d2-s29",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 13,
+        "state": {
+          "pegs": [
+            [
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 1
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 29,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 2,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 1,
+            "k": 1,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 13,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 3,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 25.048,
+      "passed": false
+    },
+    {
+      "run_id": "maker-d2-s29",
+      "mode": "maker",
+      "disks": 2,
+      "seed": 29,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 29,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "maker-d2-s29",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 15,
+        "state": {
+          "pegs": [
+            [
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 3
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 29,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 2,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 3,
+            "k": 3,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 15,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 3,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 30.348,
+      "passed": false
+    },
+    {
+      "run_id": "whole-d3-s11",
+      "mode": "whole",
+      "disks": 3,
+      "seed": 11,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 11,
+        "max_tokens": 1024,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "sample": {
+        "text": "{\"moves\": [[3, 0, 2], [1, 2, 0], [3, 0, 2], [2, 0, 1], [1, 2, 0], [3, 0, 2], [1, 0, 1]]}",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 288,
+          "completion_tokens": 68,
+          "total_tokens": 356
+        }
+      },
+      "calls": 1,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 7,
+        "observed_steps": 7,
+        "legal": false,
+        "error": "disk is not on top of its source",
+        "final_pegs": [
+          [
+            3,
+            2,
+            1
+          ],
+          [],
+          []
+        ]
+      },
+      "moves": [
+        [
+          3,
+          0,
+          2
+        ],
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          3,
+          0,
+          2
+        ],
+        [
+          2,
+          0,
+          1
+        ],
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          3,
+          0,
+          2
+        ],
+        [
+          1,
+          0,
+          1
+        ]
+      ],
+      "elapsed_seconds": 14.264,
+      "passed": false
+    },
+    {
+      "run_id": "steps-d3-s11",
+      "mode": "steps",
+      "disks": 3,
+      "seed": 11,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 11,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "steps-d3-s11",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 13,
+        "state": {
+          "pegs": [
+            [
+              3,
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 1
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 11,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 3,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 1,
+            "k": 1,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 13,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 1,
+        "expected_steps": 7,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            3,
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 24.98,
+      "passed": false
+    },
+    {
+      "run_id": "maker-d3-s11",
+      "mode": "maker",
+      "disks": 3,
+      "seed": 11,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 11,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "maker-d3-s11",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 15,
+        "state": {
+          "pegs": [
+            [
+              3,
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 3
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 11,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 3,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 3,
+            "k": 3,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 15,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 1,
+        "expected_steps": 7,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            3,
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 38.755,
+      "passed": false
+    },
+    {
+      "run_id": "whole-d3-s29",
+      "mode": "whole",
+      "disks": 3,
+      "seed": 29,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 29,
+        "max_tokens": 1024,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "sample": {
+        "text": "{\"moves\": [[3, 0, 2], [1, 0, 2], [3, 0, 1], [2, 1, 0], [3, 1, 2], [1, 0, 1], [2, 0, 1]]}",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 288,
+          "completion_tokens": 68,
+          "total_tokens": 356
+        }
+      },
+      "calls": 1,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 7,
+        "observed_steps": 7,
+        "legal": false,
+        "error": "disk is not on top of its source",
+        "final_pegs": [
+          [
+            3,
+            2,
+            1
+          ],
+          [],
+          []
+        ]
+      },
+      "moves": [
+        [
+          3,
+          0,
+          2
+        ],
+        [
+          1,
+          0,
+          2
+        ],
+        [
+          3,
+          0,
+          1
+        ],
+        [
+          2,
+          1,
+          0
+        ],
+        [
+          3,
+          1,
+          2
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          2,
+          0,
+          1
+        ]
+      ],
+      "elapsed_seconds": 15.018,
+      "passed": false
+    },
+    {
+      "run_id": "steps-d3-s29",
+      "mode": "steps",
+      "disks": 3,
+      "seed": 29,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 29,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "steps-d3-s29",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 13,
+        "state": {
+          "pegs": [
+            [
+              3,
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 1
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 29,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 3,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 1,
+            "k": 1,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 13,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 1,
+        "expected_steps": 7,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            3,
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 28.718,
+      "passed": false
+    },
+    {
+      "run_id": "maker-d3-s29",
+      "mode": "maker",
+      "disks": 3,
+      "seed": 29,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 29,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "maker-d3-s29",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 15,
+        "state": {
+          "pegs": [
+            [
+              3,
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 3
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 29,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 3,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 3,
+            "k": 3,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 15,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 1,
+        "expected_steps": 7,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            3,
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 37.325,
+      "passed": false
+    },
+    {
+      "run_id": "whole-d4-s11",
+      "mode": "whole",
+      "disks": 4,
+      "seed": 11,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 11,
+        "max_tokens": 1024,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "sample": {
+        "text": "{\"moves\": [[1, 0, 2], [1, 2, 0], [3, 0, 2], [1, 2, 0], [3, 0, 2], [1, 0, 1], [2, 2, 0], [1, 0, 2], [3, 0, 1], [1, 2, 0], [3, 0, 2], [1, 0, 1], [2, 2, 0], [1, 0, 2]]}",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 292,
+          "completion_tokens": 131,
+          "total_tokens": 423
+        }
+      },
+      "calls": 1,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 15,
+        "observed_steps": 14,
+        "legal": false,
+        "error": "disk is not on top of its source",
+        "final_pegs": [
+          [
+            4,
+            3,
+            2,
+            1
+          ],
+          [],
+          []
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ],
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          3,
+          0,
+          2
+        ],
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          3,
+          0,
+          2
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          2,
+          2,
+          0
+        ],
+        [
+          1,
+          0,
+          2
+        ],
+        [
+          3,
+          0,
+          1
+        ],
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          3,
+          0,
+          2
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          2,
+          2,
+          0
+        ],
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 24.445,
+      "passed": false
+    },
+    {
+      "run_id": "steps-d4-s11",
+      "mode": "steps",
+      "disks": 4,
+      "seed": 11,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 11,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "steps-d4-s11",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 13,
+        "state": {
+          "pegs": [
+            [
+              4,
+              3,
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 1
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 11,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 4,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 1,
+            "k": 1,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 13,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 15,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            4,
+            3,
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 26.686,
+      "passed": false
+    },
+    {
+      "run_id": "maker-d4-s11",
+      "mode": "maker",
+      "disks": 4,
+      "seed": 11,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 11,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "maker-d4-s11",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 15,
+        "state": {
+          "pegs": [
+            [
+              4,
+              3,
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 3
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 11,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 4,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 3,
+            "k": 3,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 15,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 15,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            4,
+            3,
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 27.087,
+      "passed": false
+    },
+    {
+      "run_id": "whole-d4-s29",
+      "mode": "whole",
+      "disks": 4,
+      "seed": 29,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 29,
+        "max_tokens": 1024,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "sample": {
+        "text": "{\"moves\": [[1, 0, 2], [1, 0, 2], [3, 0, 1], [1, 0, 2], [3, 0, 1], [3, 0, 2], [2, 1, 2], [1, 0, 2], [2, 1, 2], [1, 0, 1], [3, 1, 2], [1, 0, 1], [3, 1, 2], [3, 2, 1], [1, 0, 2]]}",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 292,
+          "completion_tokens": 140,
+          "total_tokens": 432
+        }
+      },
+      "calls": 1,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 15,
+        "observed_steps": 15,
+        "legal": false,
+        "error": "disk is not on top of its source",
+        "final_pegs": [
+          [
+            4,
+            3,
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ],
+        [
+          1,
+          0,
+          2
+        ],
+        [
+          3,
+          0,
+          1
+        ],
+        [
+          1,
+          0,
+          2
+        ],
+        [
+          3,
+          0,
+          1
+        ],
+        [
+          3,
+          0,
+          2
+        ],
+        [
+          2,
+          1,
+          2
+        ],
+        [
+          1,
+          0,
+          2
+        ],
+        [
+          2,
+          1,
+          2
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          3,
+          1,
+          2
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          3,
+          1,
+          2
+        ],
+        [
+          3,
+          2,
+          1
+        ],
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 31.335,
+      "passed": false
+    },
+    {
+      "run_id": "steps-d4-s29",
+      "mode": "steps",
+      "disks": 4,
+      "seed": 29,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 29,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "steps-d4-s29",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 13,
+        "state": {
+          "pegs": [
+            [
+              4,
+              3,
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 1
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 29,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 4,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 1,
+            "k": 1,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 13,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 15,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            4,
+            3,
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 24.254,
+      "passed": false
+    },
+    {
+      "run_id": "maker-d4-s29",
+      "mode": "maker",
+      "disks": 4,
+      "seed": 29,
+      "sampling": {
+        "base_url": "http://127.0.0.1:18942/v1",
+        "model": "local-single",
+        "api_key_env": "MAKER_API_KEY",
+        "temperature": 0.7,
+        "seed": 29,
+        "max_tokens": 256,
+        "timeout_seconds": 120,
+        "max_response_bytes": 65536
+      },
+      "error": "Voting budget exhausted before reaching the required margin",
+      "report": {
+        "run_id": "maker-d4-s29",
+        "status": "blocked",
+        "steps": 1,
+        "calls": 15,
+        "state": {
+          "pegs": [
+            [
+              4,
+              3,
+              2
+            ],
+            [],
+            [
+              1
+            ]
+          ],
+          "step": 1
+        },
+        "error": "Voting budget exhausted before reaching the required margin",
+        "samples": {
+          "rejected": 12,
+          "valid": 3
+        },
+        "red_flags": {
+          "invalid_candidate": 12
+        },
+        "specification": {
+          "protocol": 1,
+          "sampler": {
+            "api_key_env": "MAKER_API_KEY",
+            "base_url": "http://127.0.0.1:18942/v1",
+            "implementation": "openai-compatible-v1",
+            "max_response_bytes": 65536,
+            "max_tokens": 256,
+            "model": "local-single",
+            "seed": 29,
+            "temperature": 0.7,
+            "timeout_seconds": 120
+          },
+          "task": {
+            "disks": 4,
+            "state_mode": "deterministic",
+            "task": "hanoi",
+            "validation": "legal_move_and_state_consistency",
+            "version": 4
+          },
+          "voting": {
+            "concurrency": 3,
+            "k": 3,
+            "max_calls": 1000,
+            "max_response_bytes": 8192,
+            "max_samples": 12,
+            "retain_responses": true,
+            "step_timeout": 300
+          }
+        }
+      },
+      "calls": 15,
+      "evaluation": {
+        "passed": false,
+        "correct_prefix": 0,
+        "expected_steps": 15,
+        "observed_steps": 1,
+        "legal": true,
+        "error": null,
+        "final_pegs": [
+          [
+            4,
+            3,
+            2
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "moves": [
+        [
+          1,
+          0,
+          2
+        ]
+      ],
+      "elapsed_seconds": 23.957,
+      "passed": false
+    }
+  ]
+}

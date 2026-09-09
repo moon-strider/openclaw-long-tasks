@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          version: "0.12.8"
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy src
+      - run: uv run python -m pytest --cov --cov-report=term-missing
+      - run: uv run python scripts/verify_evidence.py
+      - run: uv build
+      - name: Install wheel outside source import paths
+        run: |
+          uv venv .wheel-check
+          uv pip install --python .wheel-check/bin/python dist/*.whl
+          cd /tmp
+          "${{ github.workspace }}/.wheel-check/bin/python" -c "import long_tasks"
+          "${{ github.workspace }}/.wheel-check/bin/openclaw-long-tasks" --help
+  compatibility:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.11", "3.13", "3.14"]
+        include:
+          - os: macos-latest
+            python: "3.12"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          version: "0.12.8"
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+      - run: uv sync --frozen --extra dev
+      - run: uv run python -m pytest -q
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          version: "0.12.8"
+          python-version: "3.12"
+      - run: uv sync --frozen --extra dev
+      - run: uv export --frozen --no-dev --no-emit-project --format requirements-txt --output-file /tmp/production.txt
+      - run: uv run pip-audit -r /tmp/production.txt --disable-pip --no-deps --strict --progress-spinner off
+  openclaw:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          version: "0.12.8"
+          python-version: "3.12"
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "24.19.0"
+      - run: uv sync --frozen --extra dev
+      - run: npm install --prefix .openclaw-test --omit=dev --no-audit --no-fund openclaw@2026.9.3
+      - run: uv run python -m pytest tests_e2e/test_openclaw.py -q
+        env:
+          OPENCLAW_BIN: ${{ github.workspace }}/.openclaw-test/node_modules/.bin/openclaw

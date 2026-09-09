@@ -1,0 +1,68 @@
+{
+  "mode": "text",
+  "model": "local-single",
+  "expected": "OPENCLAW_OK",
+  "config": {
+    "agents": {
+      "defaults": {
+        "model": {
+          "primary": "test/local-single"
+        },
+        "skipBootstrap": true
+      }
+    },
+    "models": {
+      "mode": "merge",
+      "providers": {
+        "test": {
+          "baseUrl": "http://127.0.0.1:18952/v1",
+          "apiKey": "local",
+          "api": "openai-completions",
+          "models": [
+            {
+              "id": "local-single",
+              "name": "Local integration check",
+              "reasoning": false,
+              "input": [
+                "text"
+              ],
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "contextWindow": 16384,
+              "maxTokens": 512
+            }
+          ]
+        }
+      }
+    },
+    "tools": {
+      "deny": [
+        "*"
+      ]
+    },
+    "plugins": {
+      "enabled": false
+    }
+  },
+  "envelope": {
+    "ok": true,
+    "status": "ok",
+    "final": "OPENCLAW_OK",
+    "payloads": [
+      {
+        "text": "OPENCLAW_OK",
+        "mediaUrl": null
+      }
+    ],
+    "codeModeEngaged": false,
+    "assistantTurns": 1,
+    "model": "local-single",
+    "provider": "test",
+    "sessionId": "3d6fe1b4-0540-4aff-923e-4ebb14fcb348"
+  },
+  "passed": true
+}

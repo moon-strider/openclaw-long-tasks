@@ -1,84 +1,106 @@
 # openclaw-long-tasks
 
-Durable long-task orchestration prototype for OpenClaw.
+Durable task execution for OpenClaw, plus a bounded, resumable MAKER-inspired microtask engine.
 
-## What is implemented
+A task is an ordered plan stored in SQLite. Workers claim one step, execute it, verify its result and checkpoint progress. A separate outbox handles notification delivery. The same scheduler can run a MAKER job in short slices, releasing its lease between slices.
 
-Code lives in `src/long_tasks/`:
+## Start with a local model
 
-- `config.py` - runtime settings and paths
-- `models.py` - task/step/attempt models and transition guards
-- `storage.py` - SQLite schema, persistence, leases, events, attempts
-- `runtime.py` - worker, verifier, retry/backoff, waiting/blocking/completion flow, scheduler
-- `cli.py` - basic inspection and control CLI for the prototype runtime
-- `utils.py` - ids, timestamps, stable JSON helpers
+Requires Python 3.11+ on Linux or macOS. Use a local disk for the SQLite journal.
 
-## Repository layout
+~~~bash
+git clone https://github.com/moon-strider/openclaw-long-tasks
+cd openclaw-long-tasks
+uv sync --frozen --extra dev
+export LONG_TASKS_STATE_DIR="$PWD/state"
+~~~
 
-- `src/long_tasks/` - implementation code
-- `tests/` - unit/integration-style prototype tests
-- `tests_e2e/` - runtime-level e2e tests for this repo's durable kernel
-- `scripts/` - helper scripts for local runtime validation
-- `skill/long-running-tasks/` - reusable operating skill for long-running-task workflows
+Start an OpenAI-compatible model endpoint. [swarm-of-experts](https://github.com/moon-strider/swarm-of-experts) can provide that endpoint over llama.cpp and exposes a `local-single` route.
 
-## Important distinction
+~~~bash
+uv run openclaw-long-tasks maker enqueue \
+  --disks 3 --base-url http://127.0.0.1:8000/v1 --model local-single \
+  --state-mode deterministic --prompt-mode phase \
+  --steps-per-pass 2 --max-calls 200
 
-This repo contains a self-contained durable runtime implemented in Python.
-It does not depend on OpenClaw built-in detached task ledger or `openclaw tasks` as part of its core execution model.
-These long-running tasks are NOT related to `openclaw tasks` in architecture, execution, storage, inspection, or operator workflow.
-If you are operating this repo, do not use `openclaw tasks` as the mental model or control surface unless you are explicitly debugging OpenClaw itself rather than this repo.
+uv run openclaw-long-tasks tasks tick
+uv run openclaw-long-tasks tasks list
+uv run openclaw-long-tasks service run
+~~~
 
-OpenClaw is used only as a thin transport layer for:
+The last command keeps processing due work. Stop it with Ctrl-C; a later process recovers unfinished work from the journal. Notifications stay local unless explicitly enabled.
 
-- launching agent runners
-- sending user notifications
+For a direct experiment without the macro-task scheduler:
 
-The runtime itself owns:
+~~~bash
+uv run openclaw-long-tasks maker hanoi --run-id local-hanoi \
+  --disks 3 --state-mode deterministic --prompt-mode phase \
+  --max-calls 200 --pause-after 2
+~~~
 
-- durable task state
-- step progression
-- retries and backoff
-- worker leasing
-- recovery after restart
-- user-target notification metadata
+Run the same command again to continue another slice, or omit `--pause-after` to finish. Keep the same run id, model, sampling and voting configuration. A mismatched resume is rejected.
 
-Default execution mode for multi-step tasks is sequential.
-Unless explicitly specified otherwise, steps should run one after another, not in parallel.
-This is the safe default while multi-agent parallel orchestration is still not reliable.
+## Run OpenClaw agent steps
 
-## Current commands
+Install OpenClaw separately; the recorded CLI integration uses version 2026.9.3. Save a pinned configuration such as [examples/openclaw.json](examples/openclaw.json).
 
-Install and expose this tool as a normal system CLI in regular use. Do not rely on manual `.venv` activation for everyday operation. After repo updates, reinstall/refresh the system CLI so the installed command matches the current checkout.
+~~~bash
+uv run openclaw-long-tasks tasks create \
+  --title 'Review a brief' --goal 'Produce a concise review' \
+  --steps-json '[{"title":"Review","instructions":"Review the brief in the task workspace. Return a concise summary.","verification":{"json_keys":["summary"]}}]'
 
-For repository operations, do not assume plain local git identity is already configured just because the checkout exists. Prefer the GitHub-authenticated `gh` workflow/tooling path when commit, push, or PR work is needed, and make sure you are operating inside this repo rather than the parent workspace.
+uv run openclaw-long-tasks tasks tick --config examples/openclaw.json
+~~~
 
-If dependencies are installed:
+The runner uses isolated `openclaw agent exec` turns, an explicit workspace, stdin prompts and a bounded process deadline. It requires a valid JSON final response and writes a fresh result receipt. Model-reported artifacts must exist inside that task's workspace.
 
-- `openclaw-long-tasks tasks list`
-- `openclaw-long-tasks tasks show <id>`
-- `openclaw-long-tasks tasks create --title ... --goal ... --notify-chat-id ... --steps-json ... [--reply-message-id ...]`
-- `openclaw-long-tasks tasks resume <id>`
-- `openclaw-long-tasks tasks resume-latest-for-chat --chat-id ... --reply-text ...`
-- `openclaw-long-tasks tasks cancel <id>`
-- `openclaw-long-tasks tasks tick --agent-id main --responder-agent-id main`
-- `openclaw-long-tasks service run --agent-id main --responder-agent-id main`
+To install the CLI for everyday use, run `uv tool install .`. [Operations](docs/operations.md) covers task inspection, replies, retries, service setup and optional Telegram delivery.
 
-## Goal
+## What is durable
 
-Use this repo to define and test a production-oriented long-task kernel with:
+~~~mermaid
+flowchart TD
+    P["Ordered plan"] --> R["Task runtime"]
+    R <--> D["SQLite journal"]
+    R --> O["OpenClaw agent"]
+    R --> M["MAKER microtasks"]
+    M <--> D
+    O --> S["Swarm or model API"]
+    M --> S
+~~~
 
-- SQLite durability
-- explicit state machine
-- lease-based execution
-- deterministic verification
-- retry and recovery behavior
-- user-visible LLM-authored summaries on meaningful passes
-- full final Telegram report when it fits in one message, otherwise compressed final report plus offer to send relevant files
-- reply-linked Telegram delivery
-- outbound Telegram file/image sending for relevant artifacts
-- durable retryable notification diagnostics
+- Per-invocation lease tokens, heartbeats and rejection of stale worker results.
+- Recovery of an actual `in_progress` step after an interrupted attempt.
+- Explicit retry budgets, backoff, waiting for a reply, manual resume and cancellation.
+- One transaction for the verified step, its next state, event and notification intent.
+- Claimed outbox delivery with heartbeats, backoff and a finite retry limit.
+- MAKER sample reservations, voting decisions and checkpoints that survive a restart.
 
-## Non-goal
+Leases fence database commits. They cannot undo an external side effect that happened before a crash; design side-effecting steps to be idempotent. This is a single-host runtime, and OpenClaw tools run with the configured process permissions.
 
-This repo is not a thin wrapper around OpenClaw's existing background-task machinery.
-Its long-running task behavior remains self-contained and testable on its own, while using OpenClaw only for runner launch and outward message delivery.
+## MAKER and measured results
+
+The microtask engine implements exact candidate voting with a first-to-ahead-by-k margin, red-flag rejection, bounded sampling and durable checkpoints. Its Hanoi adapters support both model-produced state and deterministic state transitions.
+
+On CPU, Qwen2.5 3B Q4_K_M produced an **11-move correct prefix out of 15** with k=3 in one micro-prompt case, compared with a prefix of 2 for k=1. Both full tasks failed. A separate three-move task completed with both settings. The adapter selects the iterative phase and handles state updates in code; these are exploratory observations, with all failed cases retained.
+
+A separate deterministic stress run completed 10,000 journalled counter steps across 50,001 sample reservations and a restart. Its sampler is a fixture, so these are not LLM-generated steps.
+
+[Experiment results](docs/experiments.md) distinguish actual CPU inference, controlled OpenClaw integration tests and deterministic infrastructure tests. This repository does not claim to reproduce a million-step LLM run. [MAKER design](docs/maker.md) explains the differences from the paper and why correlated mistakes can still win.
+
+Swarm supplies model calls; this repository owns the experiment, task semantics and recovery. Neither project requires the other for its core API.
+
+## Development
+
+~~~bash
+uv sync --frozen --extra dev
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run python -m pytest --cov --cov-report=term-missing
+uv build
+~~~
+
+Normal tests use temporary state directories and need no model, OpenClaw installation, provider account or outbound messaging. A separate integration job exercises an installed OpenClaw CLI against a deterministic upstream fixture. See [testing](docs/testing.md) for real-model commands.
+
+MIT licensed. The API is still evolving; [migration notes](docs/operations.md#migrating-from-the-prototype) describe the changes from the original prototype.
