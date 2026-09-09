@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
+from long_tasks import execution
 from long_tasks.execution import execution_cancelled, run_process
 from long_tasks.integrations import OpenClawCliAgentRunner, OpenClawCliNotificationTransport
 from long_tasks.sampling import HTTPSampler, SamplingConfig
@@ -37,6 +38,32 @@ def test_timeout_kills_descendants_before_delayed_side_effect(tmp_path):
         run_process([sys.executable, "-c", parent], timeout=0.15)
     time.sleep(0.6)
     assert not marker.exists()
+
+
+def test_exited_group_permission_race_preserves_output_error(monkeypatch):
+    children = []
+    start = execution.subprocess.Popen
+    signal_group = execution.os.killpg
+    first_signal = True
+
+    def tracked_start(*args, **kwargs):
+        child = start(*args, **kwargs)
+        children.append(child)
+        return child
+
+    def exited_group(pid, sig):
+        nonlocal first_signal
+        if first_signal:
+            first_signal = False
+            assert children[0].wait(timeout=5) == 0
+            raise PermissionError("group leader has exited")
+        return signal_group(pid, sig)
+
+    monkeypatch.setattr(execution.subprocess, "Popen", tracked_start)
+    monkeypatch.setattr(execution.os, "killpg", exited_group)
+    with pytest.raises(ValueError, match="byte limit"):
+        run_process([sys.executable, "-c", "print('x' * 10000)"], max_bytes=100)
+    assert children[0].returncode == 0
 
 
 def test_process_observes_execution_cancellation():

@@ -14,6 +14,22 @@ from threading import Event
 execution_cancelled: ContextVar[Event | None] = ContextVar("execution_cancelled", default=None)
 
 
+def _signal_group(proc: subprocess.Popen, sig: signal.Signals) -> None:
+    try:
+        os.killpg(proc.pid, sig)
+    except ProcessLookupError:
+        pass
+    except PermissionError:
+        # Reap a leader that exited since the last poll before retrying.
+        # Persistent permission failures, including live children, remain errors.
+        if proc.poll() is None:
+            raise
+        try:
+            os.killpg(proc.pid, sig)
+        except ProcessLookupError:
+            pass
+
+
 def run_process(
     args: list[str],
     *,
@@ -58,16 +74,10 @@ def run_process(
             stdout.seek(0)
             return stdout.read(max_bytes + 1).decode("utf-8")
         finally:
-            try:
-                os.killpg(proc.pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
+            _signal_group(proc, signal.SIGTERM)
             try:
                 proc.wait(timeout=2)
             except subprocess.TimeoutExpired:
                 pass
-            try:
-                os.killpg(proc.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+            _signal_group(proc, signal.SIGKILL)
             proc.wait()

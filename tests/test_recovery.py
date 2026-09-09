@@ -1,10 +1,11 @@
 import json
 import threading
-import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 
 import pytest
 
+from long_tasks import storage
 from long_tasks.api import create_task
 from long_tasks.config import Settings
 from long_tasks.models import StepStatus, TaskStatus
@@ -45,22 +46,40 @@ def okay(*args):
     return {"summary": "done"}
 
 
-def test_heartbeat_prevents_second_worker_during_long_step(tmp_path):
-    entered, release = threading.Event(), threading.Event()
+def test_heartbeat_prevents_second_worker_during_long_step(tmp_path, monkeypatch):
+    entered, release, refreshed = threading.Event(), threading.Event(), threading.Event()
 
     def blocking(*args):
         entered.set()
-        assert release.wait(5)
+        assert release.wait(10)
         return okay()
 
-    store, task, worker = setup(tmp_path, Function(blocking), ttl=0.2, refresh=0.02)
+    store, task, worker = setup(tmp_path, Function(blocking), ttl=10, refresh=0.02)
+    clock = [storage.utcnow()]
+    refresh_at = clock[0] + timedelta(seconds=9)
+    monkeypatch.setattr(storage, "utcnow", lambda: clock[0])
+    refresh = store.refresh_lease
+
+    def observe_refresh(task_id, token):
+        now = clock[0]
+        renewed = refresh(task_id, token, now=now)
+        if renewed and now >= refresh_at:
+            refreshed.set()
+        return renewed
+
+    monkeypatch.setattr(store, "refresh_lease", observe_refresh)
     with ThreadPoolExecutor() as pool:
         first = pool.submit(worker.run_pass, task.id, "same-worker-name")
-        assert entered.wait(3)
-        time.sleep(0.35)
-        assert not store.recover_expired_running_tasks()
-        assert not worker.run_pass(task.id, "same-worker-name").did_work
-        release.set()
+        try:
+            assert entered.wait(5)
+            clock[0] = refresh_at
+            assert refreshed.wait(5)
+            # Advance past the original lease, but within the real heartbeat's renewal.
+            clock[0] += timedelta(seconds=2)
+            assert not store.recover_expired_running_tasks()
+            assert not worker.run_pass(task.id, "same-worker-name").did_work
+        finally:
+            release.set()
         assert first.result().task_status == TaskStatus.COMPLETED
     assert len(store.list_attempts(task.id)) == 1
 
