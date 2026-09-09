@@ -50,7 +50,8 @@ class TracedSampler(HTTPSampler):
             record["sample"] = asdict(sample)
             return sample
         except Exception as exc:
-            record["error"] = str(exc)
+            record["error_type"] = type(exc).__name__
+            record["error"] = str(exc) or repr(exc)
             raise
         finally:
             record["elapsed_seconds"] = round(time.monotonic() - started, 3)
