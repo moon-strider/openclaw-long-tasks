@@ -55,3 +55,17 @@ def test_demonstrations_do_not_change_options_or_validate_routing():
     assert task.specification != ChoiceHanoi(7).specification
     even = ChoiceHanoi(4, routing_style="examples")
     assert "Correct choice A, because 0 goes to 1" in even.prompt(even.initial_state)
+
+
+def test_lookup_routes_the_model_destination_without_correcting_it():
+    task = ChoiceHanoi(7, routing_style="lookup")
+    state = task.initial_state
+    assert "d[0]" in task.prompt(state)
+    wrong = task.parse('{"destination":1}', state)
+    assert wrong.action == [1, 0, 1]
+    assert wrong.action != next(oracle_moves(7))
+    assert "largest" in task.prompt(wrong.state).lower()
+    with pytest.raises(ValueError):
+        task.parse('{"destination":0}', state)
+    with pytest.raises(ValueError):
+        task.parse('{"destination":true}', state)

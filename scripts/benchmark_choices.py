@@ -4,27 +4,49 @@ import argparse
 import asyncio
 import json
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from benchmark_hanoi import write_json
 
 from long_tasks.hanoi import Hanoi, evaluate_moves
-from long_tasks.hanoi_choices import CHOICE_FORMAT, ChoiceHanoi
+from long_tasks.hanoi_choices import CHOICE_FORMAT, DESTINATION_FORMAT, ChoiceHanoi
 from long_tasks.maker import Journal, Maker, MakerFailure, VotingConfig, digest
 from long_tasks.sampling import HTTPSampler, SamplingConfig
 
 
 class TracedSampler(HTTPSampler):
-    def __init__(self, config, path):
+    def __init__(self, config, path, routing_style="mapping"):
         super().__init__(config)
         self.path = path
+        self.routing = (
+            HTTPSampler(replace(config, response_format=DESTINATION_FORMAT))
+            if routing_style == "lookup"
+            else None
+        )
+
+    @property
+    def identity(self):
+        identity = super().identity
+        if self.routing is not None:
+            identity["routing_sampler"] = self.routing.identity
+        return identity
+
+    async def close(self):
+        if self.routing is not None:
+            await self.routing.close()
+        await super().close()
 
     async def sample(self, prompt, index):
         started = time.monotonic()
         record = {"number": index, "prompt": prompt}
         try:
-            sample = await super().sample(prompt, index)
+            if self.routing is not None and prompt.startswith("What is the value of d["):
+                record["response_format"] = DESTINATION_FORMAT
+                sample = await self.routing.sample(prompt, index)
+            else:
+                record["response_format"] = CHOICE_FORMAT
+                sample = await super().sample(prompt, index)
             record["sample"] = asdict(sample)
             return sample
         except Exception as exc:
@@ -78,7 +100,9 @@ async def benchmark(args):
                 if run_id in finished:
                     continue
                 config = SamplingConfig(**{**asdict(sampling), "seed": seed})
-                sampler = TracedSampler(config, args.output / f"{run_id}-calls.jsonl")
+                sampler = TracedSampler(
+                    config, args.output / f"{run_id}-calls.jsonl", args.routing_style
+                )
                 voting = VotingConfig(
                     k=k,
                     concurrency=1 if k == 1 else 3,
@@ -184,7 +208,9 @@ def arguments():
     parser.add_argument("--margins", type=int, nargs="+", default=[3, 1])
     parser.add_argument("--temperature", type=float, default=0.1)
     parser.add_argument("--rule-style", choices=["negative", "positive"], default="positive")
-    parser.add_argument("--routing-style", choices=["mapping", "examples"], default="mapping")
+    parser.add_argument(
+        "--routing-style", choices=["mapping", "examples", "lookup"], default="mapping"
+    )
     parser.add_argument("--max-samples", type=int, default=48)
     parser.add_argument("--max-calls", type=int, default=4000)
     parser.add_argument("--output", type=Path, required=True)

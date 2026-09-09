@@ -17,12 +17,26 @@ CHOICE_FORMAT = {
     },
 }
 
+DESTINATION_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "destination",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {"destination": {"type": "integer", "enum": [0, 1, 2]}},
+            "required": ["destination"],
+            "additionalProperties": False,
+        },
+    },
+}
+
 
 class ChoiceHanoi:
     def __init__(self, disks=7, rule_style="positive", routing_style="mapping"):
         if rule_style not in {"negative", "positive"}:
             raise ValueError("Unknown choice rule style")
-        if routing_style not in {"mapping", "examples"}:
+        if routing_style not in {"mapping", "examples", "lookup"}:
             raise ValueError("Unknown routing style")
         self.task = Hanoi(disks)
         self.rule_style = rule_style
@@ -67,6 +81,13 @@ class ChoiceHanoi:
         return dict(zip("ABC", actions, strict=False))
 
     def prompt(self, state):
+        if self.routing_style == "lookup" and state["step"] % 2 == 0:
+            source = next(i for i, peg in enumerate(state["pegs"]) if 1 in peg)
+            mapping = "{0: 2, 1: 0, 2: 1}" if self.task.disks % 2 else "{0: 1, 1: 2, 2: 0}"
+            return (
+                f"What is the value of d[{source}] in the Python dictionary d = {mapping}? "
+                "Return JSON with the integer value in the destination field."
+            )
         options = self.options(state)
         if state["step"] % 2 == 0:
             mapping = (
@@ -116,6 +137,18 @@ class ChoiceHanoi:
 
     def parse(self, text, state):
         value = strict_json(text)
+        if self.routing_style == "lookup" and state["step"] % 2 == 0:
+            if (
+                not isinstance(value, dict)
+                or set(value) != {"destination"}
+                or type(value["destination"]) is not int
+            ):
+                raise ValueError("Expected one integer destination")
+            source = next(i for i, peg in enumerate(state["pegs"]) if 1 in peg)
+            action = [1, source, value["destination"]]
+            return Candidate(
+                action, {"pegs": apply_move(state["pegs"], action), "step": state["step"] + 1}
+            )
         if (
             not isinstance(value, dict)
             or set(value) != {"choice"}
