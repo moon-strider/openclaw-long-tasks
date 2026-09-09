@@ -169,6 +169,35 @@ def test_sampler_forwards_seed_and_limits_without_leaking_auth(monkeypatch):
     asyncio.run(run())
 
 
+def test_sampler_forwards_format_and_preserves_unstructured_identity():
+    response_format = {
+        "type": "json_schema",
+        "json_schema": {"name": "move", "schema": {"type": "object"}},
+    }
+    config = SamplingConfig(response_format=response_format)
+    response_format["type"] = "changed by caller"
+
+    def respond(request):
+        body = json.loads(request.content)
+        assert body["response_format"]["type"] == "json_schema"
+        return httpx.Response(
+            200, json={"choices": [{"message": {"content": "{}"}, "finish_reason": "stop"}]}
+        )
+
+    async def run():
+        sampler = HTTPSampler(config, transport=httpx.MockTransport(respond))
+        legacy = HTTPSampler(SamplingConfig(), transport=httpx.MockTransport(respond))
+        try:
+            assert "response_format" not in legacy.identity
+            assert sampler.identity != legacy.identity
+            assert (await sampler.sample("one move", 0)).text == "{}"
+        finally:
+            await sampler.close()
+            await legacy.close()
+
+    asyncio.run(run())
+
+
 @pytest.mark.parametrize(
     "response",
     [
