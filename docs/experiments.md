@@ -1,8 +1,10 @@
-# Local CPU experiments
+# Earlier local CPU experiments
 
 Recorded on 9 September 2026. This is an exploratory, small-scale MAKER adaptation through [swarm-of-experts](https://github.com/moon-strider/swarm-of-experts), with all completed cases and interrupted pilots retained.
 
-The clearest partial result is **11 consecutive correct moves out of a required 15** with Qwen2.5 3B and k=3, versus a correct prefix of 2 with k=1 in the same micro-prompt case. The k=3 run stopped at its voting budget; neither run solved that task. A separate two-disk case completed all three moves with both k=1 and k=3. These observations establish a working integration and a limited local result, not reliable long-horizon reasoning or a statistically demonstrated voting advantage.
+The [continuation study](research-hundred.md) subsequently completed a full 127-move task with a more decomposed adapter. This page preserves the earlier protocols and failures.
+
+In this earlier campaign, the clearest partial result was **11 consecutive correct moves out of a required 15** with Qwen2.5 3B and k=3, versus a correct prefix of 2 with k=1 in the same micro-prompt case. The k=3 run stopped at its voting budget; neither run solved that task. A separate two-disk case completed all three moves with both k=1 and k=3. These observations establish a working integration and a limited local result, not reliable long-horizon reasoning or a statistically demonstrated voting advantage.
 
 ## What ran
 

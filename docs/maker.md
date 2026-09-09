@@ -26,10 +26,14 @@ A wrong legal answer may still win. Voting only helps when the correct candidate
 | deterministic state + full prompt | Choose the next move from the iterative rules | Apply that move |
 | deterministic state + phase prompt | Choose the move within the current iterative phase | Select odd/even phase, apply the move |
 | deterministic state + micro prompt | Choose a cycle target or the legal direction between two top disks | Select the phase, extract the relevant pegs/top disks, apply the move |
+| legal action choices | Choose a label among all physically legal moves | Select the phase, enumerate and label moves, apply the selected move |
+| choices + isolated lookup | Choose a destination from a route table, or choose a legal action label on the other phase | Select phase and disk one/source on odd turns; enumerate all legal moves on even turns; apply the selected move |
 
 The phase adapter narrows the prompt before inference. On odd moves the model follows the smallest disk's cycle; on even moves it chooses the legal direction between the other two pegs. This supplies algorithm structure, not an oracle-selected action.
 
 The micro adapter also extracts the relevant state before inference. Odd-phase prompts contain the smallest disk's current peg and cycle; even-phase prompts contain only the two eligible pegs and their top disks or emptiness. This is stronger programmatic decomposition and must be labelled when reporting a result. Even here, a wrong legal move can win: the validator does not enforce the requested phase or consult the oracle.
+
+The choice and lookup adapters are exposed by `scripts/benchmark_choices.py` and the reusable `ChoiceHanoi` class. In lookup mode the model returns only a destination on odd turns; it does not choose the disk or source. The parser accepts either legal destination, including the wrong direction. On even turns, all legal moves remain choices, including disk-one moves that do not follow the algorithm. Output grammars constrain structure and allowed labels, not the correct answer. [The continuation report](research-hundred.md) records the complete model runs and failed calibration attempts.
 
 These adapters are intentionally reported separately. A success with deterministic state and phase selection does not demonstrate that a model can maintain state or plan the entire solution unaided.
 

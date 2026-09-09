@@ -57,7 +57,9 @@
   "source_equivalence": {
     "5b5a4958d7612cca98e0d9fd7dbc08582a4adb3a": "89dacd081649a252adbb9b7a14b5673c2a7f9b7f",
     "ed290147a49dee327954bd0b2ef8a8e7176e9df8": "1fd4559a045e3cfa4a6ae2ac1de730488bbfec5d",
-    "8bc40dab70d72ae597d43ac116e2622d1beacd86": "84c67c4d73d3bd2348df2f8209914060aebdec17"
+    "8bc40dab70d72ae597d43ac116e2622d1beacd86": "84c67c4d73d3bd2348df2f8209914060aebdec17",
+    "27fb4ad2652ea02a1a48549a79dcb8ded8f3b685": "db96142af1c896ee618258ae6abf12f3199588c5"
   },
-  "source_equivalence_note": "Local experiment commits and GitHub API commits have identical source trees, verified before updating the branch."
+  "source_equivalence_note": "Local experiment commits and GitHub API commits have identical source trees, verified before updating the branch.",
+  "resume_note": "The environment interrupted the second seed at step 112. Servers restarted with the same weights and options; the journal fingerprint and charged call indices were preserved. The resume source change only improves exception trace diagnostics."
 }

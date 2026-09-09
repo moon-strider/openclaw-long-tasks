@@ -14,10 +14,11 @@
   "experiments": [
     "runs/qwen-seven-fixed",
     "runs/qwen-two-examples",
-    "runs/qwen-two-fixed"
+    "runs/qwen-two-fixed",
+    "runs/qwen-two-lookup"
   ],
   "files_sha256": {
-    "README.md": "a78de62cdcd742361d5e3eac2aa2a597e04ad927d06ab9e4476e10d1fb0b3354",
+    "README.md": "cd821fc3b023c9760a0290695a3607abdf3344680913658408b3532968b29428",
     "pilots/choices-even-qwen-four/launch.json": "b5061ae8a4764f49111bf58ee14a441a52104377c268756c13856cfc4b78f170",
     "pilots/choices-even-qwen-four/protocol.json": "dfa39e7dd7d29b4e9bbef5ac383e4478f45e6e612c1ca045b2575cd287799924",
     "pilots/choices-even-qwen-four/results.json": "ecc354ff38de5d55c5d852847190c33608cda093cbb8699bda432455b7fc1ac6",
@@ -90,6 +91,21 @@
     "runs/qwen-two-fixed/protocol.json": "288814168209535ba6b55eced96bc395fa9746c6036322a85542cc92cc9b473f",
     "runs/qwen-two-fixed/results.json": "0407120a36d32c6c49e44fe064969b997ebf7a3d50cf31cfbd6ae146e16d83d8",
     "runs/qwen-two-fixed/source.json": "5f60952db82c54a316a0a5896fa1b0c088b4fcc696636b8fa17355da959e0b33",
-    "runtime.json": "f16d32ca48e14342348228c7c3621032e882ed6e5a0dcd656523c88f70607141"
+    "runs/qwen-two-lookup/choices-d7-k1-s941-calls.jsonl": "87b177f4d5377929304113df278757d5bc3b7cc230cc1ba142e040d7226ffa0a",
+    "runs/qwen-two-lookup/choices-d7-k1-s947-calls.jsonl": "7084bb96f625490f3fcc47df92747fc1a377a5ba293fa9928f2d23783a52f42d",
+    "runs/qwen-two-lookup/choices-d7-k3-s941-calls.jsonl": "5194dff0fabef73500d431e358521c371d6df308d45b2b8542d056dfada6dfb1",
+    "runs/qwen-two-lookup/choices-d7-k3-s947-calls.jsonl": "6b8636676cc183fa18f197cb4628e84df848fc5965ae95663e2abba4672842ed",
+    "runs/qwen-two-lookup/interruption.json": "3ea6ae7725f7fe0c7d702e3bb86223983c1aa566f8d5a9117271ddd91147e424",
+    "runs/qwen-two-lookup/journal-before-resume.json": "9babe8fdbec35085afc6c3091031350e92aefb6c2bbe29ca3f6ccf2117b93ec2",
+    "runs/qwen-two-lookup/journal.json": "d085f3902634479ac32056884911826669384ca6f14f3996a818646b0f73944f",
+    "runs/qwen-two-lookup/launch-before-resume.json": "78e254e5b0c4988910b1720d8e62a26d43e41e76cb5e5156393b373dc841cf95",
+    "runs/qwen-two-lookup/launch.json": "661a0900ff94bf0e1fe00124bd94877baf46e10d8f38de5cb59f09a2b8eafe67",
+    "runs/qwen-two-lookup/llama-before-resume.log": "14a346a444f6f2f5b006676203530d68619e9010c5c8037d6da8239c24c436d0",
+    "runs/qwen-two-lookup/llama.log": "a7c9e5d45e64916c8c4aab7a818c4a21f49af6daeaeffdf493b3857702d3a0b8",
+    "runs/qwen-two-lookup/protocol.json": "b3a6d50b296947457c073a50997c728ee5fceae119f93156694dbd0af8ad93bb",
+    "runs/qwen-two-lookup/results.json": "a1a54c0e104b01d894b0e75c1f9b9aef8cc902d973589382cbdf8bb1dfbade57",
+    "runs/qwen-two-lookup/resume-source.json": "9a8e02d3049e604fb20d36041ee127400eacb33b3699139b11b5ef53c7d2fe2a",
+    "runs/qwen-two-lookup/source.json": "ab44e279344348d3990d1101584e0c3cf251aec784db603387777f921c0ecae3",
+    "runtime.json": "0c4d3d573bf387659090190e3762bc3218164722ae53d942df8c9e607d57c19e"
   }
 }
