@@ -1,0 +1,49 @@
+import asyncio, copy, json, sys, time
+from pathlib import Path
+from types import SimpleNamespace
+import httpx
+REPO=Path('/workspace/scratch/8a803cd8931f/openclaw-long-tasks')
+sys.path.insert(0,str(REPO/'scripts'))
+from pilot_hanoi import local_endpoint
+from long_tasks.hanoi_choices import ChoiceHanoi, CHOICE_FORMAT
+from long_tasks.hanoi import oracle_moves, apply_move
+
+async def run(args, endpoint):
+ task=ChoiceHanoi(7)
+ state=task.initial_state
+ states=[]
+ for expected in oracle_moves(7):
+  if state['step'] in [0,2,8,63]: states.append((state,expected))
+  state={'pegs':apply_move(state['pegs'],expected),'step':state['step']+1}
+ plans=[]
+ for style in ['examples','arithmetic','minimal']:
+  for state,expected in states:
+   for ix,seed in enumerate([601,607,613]):
+    prompt=task.prompt(state)
+    if style=='examples' and state['step']%2==0:
+     examples='Worked examples of the disk-one routing rule:\nExample 1 options: A: disk 1 from 0 to 1; B: disk 1 from 0 to 2. Correct choice B, because 0 goes to 2.\nExample 2 options: A: disk 8 from 1 to 0; B: disk 1 from 2 to 0; C: disk 1 from 2 to 1. Correct choice C, because 2 goes to 1.\nExample 3 options: A: disk 1 from 1 to 0; B: disk 1 from 1 to 2; C: disk 8 from 2 to 0. Correct choice A, because 1 goes to 0.\nNow solve the following input using the same rule:\n'
+     prompt=examples+prompt
+    if style=='arithmetic' and state['step']%2==0:
+     prompt=prompt.replace('Choose a move of DISK 1. Its source and destination MUST match this mapping: 0 goes to 2; 1 goes to 0; 2 goes to 1.','Choose DISK 1. Subtract one from its SOURCE to obtain its DESTINATION; wrap a result of minus one to 2.')
+    if style=='minimal':
+     opts=task.options(state)
+     if state['step']%2==0:
+      prompt='Choose a disk-one move along one of these arrows: 0 → 2, 2 → 1, 1 → 0.\n'
+     else: prompt='Choose the move with the largest disk number.\n'
+     prompt+='\n'.join(f'{k}: disk {m[0]} moves {m[1]} → {m[2]}' for k,m in opts.items())+'\nReply with the chosen letter as JSON: {"choice":"A"} or {"choice":"B"} or {"choice":"C"}.'
+    plans.append({'style':style,'state':state,'expected':expected,'seed':seed,'prompt':prompt,'format':CHOICE_FORMAT})
+ (args.output/'protocol.json').write_text(json.dumps({'closed_loop':False,'description':'adaptive route representation pilot after fixed and paired rules failed','plans':plans},indent=2))
+ rows=[]
+ async with httpx.AsyncClient(timeout=180,trust_env=False) as c:
+  for plan in plans:
+   start=time.monotonic()
+   r=await c.post(endpoint+'/chat/completions',json={'model':'local-single','messages':[{'role':'user','content':plan['prompt']}],'max_tokens':192 if plan['style']=='reasoned' else 32,'temperature':0.1,'seed':plan['seed'],'response_format':plan['format']})
+   r.raise_for_status(); value=r.json(); choice=value['choices'][0]; text=choice['message']['content']
+   try: correct=task.parse(json.dumps({'choice':json.loads(text)['choice']}),plan['state']).action==plan['expected'] and choice['finish_reason']=='stop'
+   except Exception: correct=False
+   row={**plan,'response':value,'correct':correct,'elapsed_seconds':round(time.monotonic()-start,3)}; rows.append(row)
+   (args.output/'samples.json').write_text(json.dumps(rows,indent=2))
+   print(json.dumps({'style':plan['style'],'step':plan['state']['step'],'correct':correct,'answer':text}),flush=True)
+ (args.output/'results.json').write_text(json.dumps({style:{'correct':sum(r['correct'] for r in rows if r['style']==style),'calls':sum(r['style']==style for r in rows)} for style in ['examples','arithmetic','minimal']},indent=2))
+args=SimpleNamespace(llama=Path('/tmp/maker-runtime/llama-b10867/llama-server'),model_file=Path('/tmp/codex-model-cache/qwen2.5-3b-instruct-q4_k_m.gguf'),swarm=REPO.parent/'swarm-of-experts',swarm_python=Path('/tmp/swarm-clean/bin/python'),output=Path('/tmp/maker-hundred-pilots/examples-qwen-two'))
+with local_endpoint(args) as endpoint: asyncio.run(run(args,endpoint))

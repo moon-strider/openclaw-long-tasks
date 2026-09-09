@@ -6,7 +6,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from long_tasks.hanoi import Hanoi, evaluate_moves
+from long_tasks.hanoi import Hanoi, apply_move, evaluate_moves, oracle_moves
 from long_tasks.hanoi_choices import ChoiceHanoi
 from long_tasks.maker import canonical, digest, winner
 
@@ -122,11 +122,59 @@ def verify_archive(root):
     for name, expected in index["files_sha256"].items():
         require(hashlib.sha256((root / name).read_bytes()).hexdigest() == expected, f"Hash: {name}")
     reports = {entry: verify_experiment(root / entry) for entry in index["experiments"]}
+    pilots = {entry: verify_pilot(root / entry) for entry in index["pilots"]}
     return {
         "experiments": reports,
+        "pilot_calls": sum(p["calls"] for p in pilots.values()),
         "verified_files": len(index["files_sha256"]),
         "new_llm_calls": 0,
     }
+
+
+def verify_pilot(folder):
+    rows = json.loads((folder / "samples.json").read_text())
+    results = json.loads((folder / "results.json").read_text())
+    totals = {}
+    for row in rows:
+        response = row["response"]["choices"][0]
+        text = response["message"]["content"]
+        correct = False
+        if "state" in row:
+            state = row["state"]
+            disks = sum(len(peg) for peg in state["pegs"])
+            task = ChoiceHanoi(disks)
+            reference = task.initial_state
+            for step, expected in enumerate(oracle_moves(disks)):
+                if step == state["step"]:
+                    break
+                reference = {
+                    "pegs": apply_move(reference["pegs"], expected),
+                    "step": step + 1,
+                }
+            require(state == reference, "Pilot state is not the declared oracle state")
+            try:
+                value = json.loads(text)
+                if "variant" in row:
+                    action = Hanoi(disks, "deterministic", "micro").parse(text, state).action
+                else:
+                    action = task.parse(json.dumps({"choice": value["choice"]}), state).action
+                correct = action == expected
+            except (ValueError, TypeError, KeyError):
+                pass
+        else:
+            try:
+                correct = json.loads(text)["destination"] == {0: 2, 1: 0, 2: 1}[row["source"]]
+            except (ValueError, TypeError, KeyError):
+                pass
+        correct = correct and response["finish_reason"] == "stop"
+        require(correct == row["correct"], "Pilot accuracy mismatch")
+        group = row.get("style", row.get("variant", "all"))
+        total = totals.setdefault(group, {"correct": 0, "calls": 0})
+        total["calls"] += 1
+        total["correct"] += correct
+    expected_results = totals["all"] if set(totals) == {"all"} else totals
+    require(results == expected_results, "Pilot summary mismatch")
+    return {"calls": len(rows), "groups": totals}
 
 
 if __name__ == "__main__":

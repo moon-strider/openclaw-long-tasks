@@ -1,0 +1,50 @@
+import asyncio, copy, json, sys, time
+from pathlib import Path
+from types import SimpleNamespace
+import httpx
+REPO=Path('/workspace/scratch/8a803cd8931f/openclaw-long-tasks')
+sys.path.insert(0,str(REPO/'scripts'))
+from pilot_hanoi import local_endpoint
+from long_tasks.hanoi_choices import ChoiceHanoi, CHOICE_FORMAT
+from long_tasks.hanoi import oracle_moves, apply_move
+
+async def run(args, endpoint):
+ task=ChoiceHanoi(7)
+ state=task.initial_state
+ states=[]
+ for expected in oracle_moves(7):
+  if state['step'] in [0,2,8,63]: states.append((state,expected))
+  state={'pegs':apply_move(state['pegs'],expected),'step':state['step']+1}
+ plans=[]
+ for style in ['rotated','pairs','reasoned']:
+  for state,expected in states:
+   for ix,seed in enumerate([419,421,431]):
+    prompt=task.prompt(state)
+    if style=='rotated':
+     pre,rest=prompt.split('OPTIONS:\n'); rows,post=rest.split('\nReturn only')
+     lines=rows.splitlines(); shift=ix%len(lines)
+     prompt=pre+'OPTIONS:\n'+'\n'.join(lines[shift:]+lines[:shift])+'\nReturn only'+post
+    if style in ['pairs','reasoned'] and state['step']%2==0:
+     rule='Choose a move of DISK 1. Its source and destination MUST match this mapping: 0 goes to 2; 1 goes to 0; 2 goes to 1.'
+     prompt=prompt.replace(rule,'The chosen option must satisfy BOTH conditions: (1) DISK equals 1; (2) the pair (SOURCE, DESTINATION) is in the allowed set {(0, 2), (1, 0), (2, 1)}. Check each option against both conditions.')
+    fmt=copy.deepcopy(CHOICE_FORMAT)
+    if style=='reasoned':
+     prompt=prompt.split('\nReturn only')[0]+'\nExplain briefly which options satisfy the rule. Then select the matching option. Return JSON with reason and choice fields. /no_think'
+     fmt['json_schema']['schema']['properties']={'reason':{'type':'string'},'choice':{'type':'string','enum':['A','B','C']}}
+     fmt['json_schema']['schema']['required']=['reason','choice']
+    plans.append({'style':style,'state':state,'expected':expected,'seed':seed,'prompt':prompt,'format':fmt})
+ (args.output/'protocol.json').write_text(json.dumps({'closed_loop':False,'description':'adaptive failure diagnostic after fixed choice move nine failed','plans':plans},indent=2))
+ rows=[]
+ async with httpx.AsyncClient(timeout=180,trust_env=False) as c:
+  for plan in plans:
+   start=time.monotonic()
+   r=await c.post(endpoint+'/chat/completions',json={'model':'local-single','messages':[{'role':'user','content':plan['prompt']}],'max_tokens':192 if plan['style']=='reasoned' else 32,'temperature':0.1,'seed':plan['seed'],'response_format':plan['format']})
+   r.raise_for_status(); value=r.json(); choice=value['choices'][0]; text=choice['message']['content']
+   try: correct=task.parse(json.dumps({'choice':json.loads(text)['choice']}),plan['state']).action==plan['expected'] and choice['finish_reason']=='stop'
+   except Exception: correct=False
+   row={**plan,'response':value,'correct':correct,'elapsed_seconds':round(time.monotonic()-start,3)}; rows.append(row)
+   (args.output/'samples.json').write_text(json.dumps(rows,indent=2))
+   print(json.dumps({'style':plan['style'],'step':plan['state']['step'],'correct':correct,'answer':text}),flush=True)
+ (args.output/'results.json').write_text(json.dumps({style:{'correct':sum(r['correct'] for r in rows if r['style']==style),'calls':sum(r['style']==style for r in rows)} for style in ['rotated','pairs','reasoned']},indent=2))
+args=SimpleNamespace(llama=Path('/tmp/maker-runtime/llama-b10867/llama-server'),model_file=Path('/tmp/codex-model-cache/qwen2.5-3b-instruct-q4_k_m.gguf'),swarm=REPO.parent/'swarm-of-experts',swarm_python=Path('/tmp/swarm-clean/bin/python'),output=Path('/tmp/maker-hundred-pilots/decorrelate-qwen-two'))
+with local_endpoint(args) as endpoint: asyncio.run(run(args,endpoint))
