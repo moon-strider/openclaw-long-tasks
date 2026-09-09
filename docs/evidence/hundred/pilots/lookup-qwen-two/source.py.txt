@@ -1,0 +1,33 @@
+import asyncio, copy, json, sys, time
+from pathlib import Path
+from types import SimpleNamespace
+import httpx
+REPO=Path('/workspace/scratch/8a803cd8931f/openclaw-long-tasks')
+sys.path.insert(0,str(REPO/'scripts'))
+from pilot_hanoi import local_endpoint
+from long_tasks.hanoi_choices import ChoiceHanoi, CHOICE_FORMAT
+from long_tasks.hanoi import oracle_moves, apply_move
+
+async def run(args,endpoint):
+ fmt={'type':'json_schema','json_schema':{'name':'destination','strict':True,'schema':{'type':'object','properties':{'destination':{'type':'integer','enum':[0,1,2]}},'required':['destination'],'additionalProperties':False}}}
+ plans=[]
+ for style in ['lookup','successor','words']:
+  for source in [0,1,2]:
+   for seed in [811,821,823]:
+    if style=='lookup':prompt=f'What is the value of d[{source}] in the Python dictionary d = {{0: 2, 1: 0, 2: 1}}? Return JSON with the integer value in the destination field.'
+    elif style=='successor':prompt=f'In the repeating sequence 0, 2, 1, 0, 2, 1, 0, 2, 1, what number immediately follows {source}? Return JSON with that integer in the destination field.'
+    else:prompt=f'Translation table: zero means two; one means zero; two means one. Translate {"zero one two".split()[source]} using the table. Return the translated number as an integer in JSON field destination.'
+    plans.append({'style':style,'source':source,'seed':seed,'prompt':prompt})
+ (args.output/'protocol.json').write_text(json.dumps({'kind':'isolated_route_lookup_pilot','closed_loop':False,'plans':plans,'response_format':fmt},indent=2))
+ rows=[]
+ async with httpx.AsyncClient(timeout=180,trust_env=False) as c:
+  for plan in plans:
+   r=await c.post(endpoint+'/chat/completions',json={'model':'local-single','messages':[{'role':'user','content':plan['prompt']}],'max_tokens':32,'temperature':0.1,'seed':plan['seed'],'response_format':fmt});r.raise_for_status();value=r.json();choice=value['choices'][0]
+   try:correct=json.loads(choice['message']['content'])['destination']=={0:2,1:0,2:1}[plan['source']] and choice['finish_reason']=='stop'
+   except Exception:correct=False
+   rows.append({**plan,'response':value,'correct':correct})
+   (args.output/'samples.json').write_text(json.dumps(rows,indent=2))
+   print(json.dumps({'style':plan['style'],'source':plan['source'],'correct':correct,'answer':choice['message']['content']}),flush=True)
+ (args.output/'results.json').write_text(json.dumps({style:{'correct':sum(r['correct'] for r in rows if r['style']==style),'calls':sum(r['style']==style for r in rows)} for style in ['lookup','successor','words']},indent=2))
+args=SimpleNamespace(llama=Path('/tmp/maker-runtime/llama-b10867/llama-server'),model_file=Path('/tmp/codex-model-cache/qwen2.5-3b-instruct-q4_k_m.gguf'),swarm=REPO.parent/'swarm-of-experts',swarm_python=Path('/tmp/swarm-clean/bin/python'),output=Path('/tmp/maker-hundred-pilots/lookup-qwen-two'))
+with local_endpoint(args) as endpoint: asyncio.run(run(args,endpoint))

@@ -82,11 +82,18 @@ Leases fence database commits. They cannot undo an external side effect that hap
 
 The microtask engine implements exact candidate voting with a first-to-ahead-by-k margin, red-flag rejection, bounded sampling and durable checkpoints. Its Hanoi adapters support both model-produced state and deterministic state transitions.
 
-On CPU, Qwen2.5 3B Q4_K_M produced an **11-move correct prefix out of 15** with k=3 in one micro-prompt case, compared with a prefix of 2 for k=1. Both full tasks failed. A separate three-move task completed with both settings. The adapter selects the iterative phase and handles state updates in code; these are exploratory observations, with all failed cases retained.
+Qwen2.5 3B Q4_K_M completed **all 127 moves of seven-disk Hanoi in four declared CPU runs**: two seeds with k=1 and k=3. Each k=1 run used 127 calls. The k=3 runs reserved 381 and 387 attempts; one continued from step 112 after an environment interruption, preserving its checkpoints and budget. Every counted move required a model-selected destination or action; code supplied the iterative phase and maintained state.
 
-A separate deterministic stress run completed 10,000 journalled counter steps across 50,001 sample reservations and a restart. Its sampler is a fixture, so these are not LLM-generated steps.
+The main improvement was further decomposition: a small dictionary lookup for disk-one routing, alternating with selection among legal moves. Earlier choice prompts failed after eight correct moves, and moving to 7B did not fix them. Both k=1 controls passed, so these results do not establish an added voting benefit for this adapter. This is an assisted execution experiment with a small repeated decision task.
 
-[Experiment results](docs/experiments.md) distinguish actual CPU inference, controlled OpenClaw integration tests and deterministic infrastructure tests. This repository does not claim to reproduce a million-step LLM run. [MAKER design](docs/maker.md) explains the differences from the paper and why correlated mistakes can still win.
+~~~bash
+uv run python scripts/benchmark_choices.py \
+  --base-url http://127.0.0.1:8000/v1 --model local-single \
+  --disks 7 --routing-style lookup --seeds 941 --margins 1 \
+  --output results/hundred
+~~~
+
+[Research and results](docs/research-hundred.md) cover the papers, controls, model checksums, raw logs and reproduction commands. [Earlier experiments](docs/experiments.md) retain the previous eleven-move result and the separate OpenClaw and durability tests. [MAKER design](docs/maker.md) explains exact voting, adapter responsibilities and correlated errors.
 
 Swarm supplies model calls; this repository owns the experiment, task semantics and recovery. Neither project requires the other for its core API.
 

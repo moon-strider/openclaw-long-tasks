@@ -1,0 +1,65 @@
+{
+  "recorded_date": "2026-09-09",
+  "python": "3.12.14",
+  "hardware": "Linux x86_64, Intel Xeon Platinum 8573C, shared CPU environment",
+  "llama_cpp": {
+    "release": "b10867",
+    "commit": "f3f1a8f27",
+    "source": "https://github.com/ggml-org/llama.cpp/releases/tag/b10867",
+    "archive_sha256": "e52005c40754ad0608b633b699d63972e11f56deaa1c0f011881eaa491d84bb5",
+    "threads": 4,
+    "batch_threads": 4,
+    "context_tokens": 8192,
+    "slots": 1,
+    "gpu_layers": 0,
+    "thinking": false
+  },
+  "swarm_commit": "69257674fa6a245ebead0dd6abb83602a37de04d",
+  "route": "local-single",
+  "cloud_model_calls": 0,
+  "models": [
+    {
+      "model": "Qwen/Qwen2.5-3B-Instruct-GGUF",
+      "revision": "7dabda4d13d513e3e842b20f0d435c732f172cbe",
+      "quantization": "Q4_K_M",
+      "file": "qwen2.5-3b-instruct-q4_k_m.gguf",
+      "bytes": 2104932768,
+      "sha256": "626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d"
+    },
+    {
+      "model": "Qwen/Qwen3-4B-GGUF",
+      "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+      "quantization": "Q4_K_M",
+      "file": "Qwen3-4B-Q4_K_M.gguf",
+      "bytes": 2497280256,
+      "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5"
+    },
+    {
+      "model": "Qwen/Qwen2.5-7B-Instruct-GGUF",
+      "revision": "bb5d59e06d9551d752d08b292a50eb208b07ab1f",
+      "quantization": "Q4_K_M",
+      "files": [
+        {
+          "file": "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
+          "size": 3993201344,
+          "sha256": "dfce12e3862a5283ccfb88221b48480e58745165de856439950d0f22590580db",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/bb5d59e06d9551d752d08b292a50eb208b07ab1f/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf"
+        },
+        {
+          "file": "qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf",
+          "size": 689872288,
+          "sha256": "539cf93f78e887edea1c04e2d7d8cdaca9d01dae9c9025bcb8accbe29df3d72a",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/bb5d59e06d9551d752d08b292a50eb208b07ab1f/qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf"
+        }
+      ]
+    }
+  ],
+  "source_equivalence": {
+    "5b5a4958d7612cca98e0d9fd7dbc08582a4adb3a": "89dacd081649a252adbb9b7a14b5673c2a7f9b7f",
+    "ed290147a49dee327954bd0b2ef8a8e7176e9df8": "1fd4559a045e3cfa4a6ae2ac1de730488bbfec5d",
+    "8bc40dab70d72ae597d43ac116e2622d1beacd86": "84c67c4d73d3bd2348df2f8209914060aebdec17",
+    "27fb4ad2652ea02a1a48549a79dcb8ded8f3b685": "db96142af1c896ee618258ae6abf12f3199588c5"
+  },
+  "source_equivalence_note": "Local experiment commits and GitHub API commits have identical source trees, verified before updating the branch.",
+  "resume_note": "The environment interrupted the second seed at step 112. Servers restarted with the same weights and options; the journal fingerprint and charged call indices were preserved. The resume source change only improves exception trace diagnostics."
+}

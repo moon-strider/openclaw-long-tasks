@@ -27,7 +27,28 @@ Use `--mode text` for a basic text path. That also works with a text-only Swarm 
 
 An installed OpenClaw test against a deterministic upstream fixture checks the CLI/tool protocol. A run against llama.cpp checks both that protocol and the model's ability to use it. Their results are labelled separately in [the report](experiments.md).
 
-## Model benchmark
+## Long-horizon model benchmark
+
+The [continuation study](research-hundred.md) records actual 127-move CPU model runs. To run its complete comparison against a local model endpoint:
+
+~~~bash
+uv run python scripts/benchmark_choices.py \
+  --base-url http://127.0.0.1:8000/v1 --model local-single \
+  --disks 7 --routing-style lookup --seeds 941 947 --margins 3 1 \
+  --output results/hundred
+~~~
+
+This writes the protocol before inference, then stores actual prompts, raw model completions, call numbers and token usage in per-case JSONL traces. Accepted moves feed the next state. An independent evaluator stops the case on the first incorrect accepted move and never corrects it. The lookup adapter provides more deterministic help than the older full-prompt adapter; its responsibilities are documented with the results.
+
+To inspect the checked-in evidence without running a model:
+
+~~~bash
+uv run python scripts/verify_choices.py docs/evidence/hundred
+~~~
+
+The verifier recomputes pilot scores and replays candidate parsing, exact votes, checkpoint hashes and the recursive Hanoi evaluation. Its tests also change recorded votes and reported prefixes to ensure false claims are rejected. This replay is an integrity check of the model experiment, not new inference.
+
+## Earlier model benchmark
 
 ~~~bash
 uv run python scripts/benchmark_hanoi.py \

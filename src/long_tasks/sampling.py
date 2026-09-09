@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import asdict, dataclass
+from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
 
-from .maker import Sample, strict_json
+from .maker import Sample, canonical, strict_json
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,7 @@ class SamplingConfig:
     max_tokens: int = 256
     timeout_seconds: float = 120
     max_response_bytes: int = 65536
+    response_format: dict[str, Any] | None = None
 
     def __post_init__(self):
         url = urlsplit(self.base_url)
@@ -42,6 +44,19 @@ class SamplingConfig:
         ]:
             if type(getattr(self, name)) is not int or not low <= getattr(self, name) <= high:
                 raise ValueError(f"Invalid {name}")
+        if self.response_format is not None:
+            if not isinstance(self.response_format, dict) or self.response_format.get(
+                "type"
+            ) not in {
+                "json_object",
+                "json_schema",
+            }:
+                raise ValueError("Use a JSON response format")
+            encoded = canonical(self.response_format)
+            if len(encoded.encode()) > 16384:
+                raise ValueError("Response format exceeds 16 KiB")
+            # Separate the caller's mutable dictionary from the recorded configuration.
+            object.__setattr__(self, "response_format", strict_json(encoded))
 
 
 class HTTPSampler:
@@ -62,7 +77,10 @@ class HTTPSampler:
 
     @property
     def identity(self):
-        return {"implementation": "openai-compatible-v1", **asdict(self.config)}
+        identity = {"implementation": "openai-compatible-v1", **asdict(self.config)}
+        if self.config.response_format is None:
+            del identity["response_format"]  # Preserve fingerprints of existing unstructured runs.
+        return identity
 
     async def sample(self, prompt: str, index: int) -> Sample:
         config = self.config
@@ -74,6 +92,8 @@ class HTTPSampler:
             "max_tokens": config.max_tokens,
             "stream": False,
         }
+        if config.response_format is not None:
+            payload["response_format"] = config.response_format
         async with self.client.stream(
             "POST", config.base_url.rstrip("/") + "/chat/completions", json=payload
         ) as response:
