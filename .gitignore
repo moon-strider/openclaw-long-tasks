@@ -2,3 +2,21 @@ __pycache__/
 *.pyc
 .venv/
 .pytest_cache/
+
+# Local inference and test output
+.openclaw-test/
+.wheel-check/
+state/
+results/
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.maker.lock
+*.gguf
+
+.coverage
+.coverage.*
+htmlcov/
+dist/
+.mypy_cache/
+.ruff_cache/

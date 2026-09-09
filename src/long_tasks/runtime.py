@@ -1,18 +1,26 @@
+"""Leased macro steps with fenced checkpoints and a transactional outbox."""
+
 from __future__ import annotations
 
+import json
+import threading
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Protocol
 
-from .config import Settings
+from .execution import execution_cancelled
 from .models import AttemptStatus, Step, StepStatus, Task, TaskStatus
 from .storage import TaskStore
-from .utils import new_id, utcnow, waiting_alert_hash
+from .utils import new_id, stable_json, utcnow, waiting_alert_hash
+from .validation import Rules
 
 
 class StepExecutor(Protocol):
-    def execute(self, task: Task, step: Step, attempt_count: int, artifacts_dir: Path) -> dict[str, Any]: ...
+    def execute(
+        self, task: Task, step: Step, attempt_count: int, artifacts_dir: Path
+    ) -> dict[str, Any]: ...
 
 
 class NotificationSink(Protocol):
@@ -37,363 +45,64 @@ class WorkerPassResult:
 
 
 class InMemoryNotificationSink:
-    def __init__(self) -> None:
+    def __init__(self):
         self.messages: list[tuple[str, str]] = []
 
-    def send(self, task: Task, message: str) -> bool:
+    def send(self, task, message):
         self.messages.append((task.id, message))
         return True
 
 
 class DeterministicVerifier:
-    def verify(self, step: Step, output: dict[str, Any]) -> VerificationResult:
-        details: list[str] = []
-        rules = step.verification
-
-        expected_exit_code = rules.get("command_exit_code")
-        if expected_exit_code is not None:
-            actual = output.get("command_exit_code")
-            if actual != expected_exit_code:
-                return VerificationResult(False, [f"command_exit_code expected {expected_exit_code}, got {actual}"])
-            details.append(f"command_exit_code={actual}")
-
-        for path_str in rules.get("file_exists", []):
-            path = Path(path_str)
-            if not path.exists():
-                return VerificationResult(False, [f"missing file: {path}"])
-            details.append(f"file_exists={path}")
-
-        for item in rules.get("file_contains", []):
-            path = Path(item["path"])
-            needle = item["contains"]
-            if not path.exists():
-                return VerificationResult(False, [f"missing file for content check: {path}"])
-            text = path.read_text(encoding="utf-8")
-            if needle not in text:
-                return VerificationResult(False, [f"file missing expected content: {path} -> {needle}"])
-            details.append(f"file_contains={path}")
-
-        for key in rules.get("json_keys", []):
-            if key not in output:
-                return VerificationResult(False, [f"missing json key: {key}"])
-            details.append(f"json_key={key}")
-
-        artifact_keys = rules.get("artifact_keys", [])
-        for key in artifact_keys:
-            if key not in output.get("artifacts", {}):
-                return VerificationResult(False, [f"missing artifact key: {key}"])
-            details.append(f"artifact_key={key}")
-
-        return VerificationResult(True, details)
-
-
-def compute_retry_backoff(attempt_number: int) -> timedelta:
-    if attempt_number <= 1:
-        return timedelta(minutes=1)
-    if attempt_number == 2:
-        return timedelta(minutes=5)
-    if attempt_number == 3:
-        return timedelta(minutes=15)
-    return timedelta(minutes=30)
-
-
-class Worker:
-    def __init__(
-        self,
-        store: TaskStore,
-        executor: StepExecutor,
-        notifier: NotificationSink,
-        verifier: DeterministicVerifier | None = None,
-        settings: Settings | None = None,
-    ):
-        self.store = store
-        self.executor = executor
-        self.notifier = notifier
-        self.verifier = verifier or DeterministicVerifier()
-        self.settings = settings or store.settings
-
-    def run_pass(self, task_id: str, worker_id: str) -> WorkerPassResult:
-        task = self.store.get_task(task_id)
-        if task is None:
-            raise KeyError(task_id)
-        step = self.store.get_current_step(task_id)
-        if step is None:
-            raise ValueError(f"Task {task_id} has no current step")
-
-        attempt_id = new_id()
-        now = utcnow()
-        artifacts_dir = self.settings.artifacts_dir / task.id
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
-        (artifacts_dir / 'shared').mkdir(parents=True, exist_ok=True)
-
-        with self.store.transaction() as conn:
-            current_row = conn.execute("SELECT status FROM tasks WHERE id = ?", (task.id,)).fetchone()
-            current_status = TaskStatus(current_row["status"])
-            if current_status is TaskStatus.READY:
-                self.store.transition_task_status(conn, task.id, TaskStatus.RUNNING, last_error=None)
-            elif current_status is TaskStatus.RUNNING:
-                conn.execute("UPDATE tasks SET last_error = NULL, updated_at = ? WHERE id = ?", (now.isoformat(), task.id))
-            else:
-                raise ValueError(f"Task {task.id} is not runnable from {current_status}")
-            self.store.transition_step_status(conn, step.id, StepStatus.IN_PROGRESS, started_at=now)
-            conn.execute(
-                "UPDATE steps SET attempt_count = attempt_count + 1 WHERE id = ?",
-                (step.id,),
-            )
-            self.store.record_attempt_start(
-                conn,
-                attempt_id=attempt_id,
-                task_id=task.id,
-                step_id=step.id,
-                role="worker",
-                worker_id=worker_id,
-                snapshot={"task_goal": task.goal, "step": step.title, "step_index": step.step_index},
-            )
-            self.store.add_event(conn, new_id(), task.id, "worker.pass.started", {"step_index": step.step_index}, step.id)
-
-        step = self.store.get_current_step(task_id)
-        assert step is not None
-
+    def verify(self, step, output):
         try:
-            output = self.executor.execute(task, step, step.attempt_count, artifacts_dir)
-            verification = self.verifier.verify(step, output)
-            if not verification.ok:
-                return self._retry_or_fail(task_id, step.id, attempt_id, step.attempt_count, verification.details[0], output)
-            return self._complete_step(task_id, step.id, attempt_id, output, verification.details)
-        except NeedsUserInput as exc:
-            return self._mark_waiting_user(task_id, step.id, attempt_id, str(exc))
-        except TaskBlocked as exc:
-            return self._mark_blocked(task_id, step.id, attempt_id, str(exc))
-        except Exception as exc:
-            return self._retry_or_fail(task_id, step.id, attempt_id, step.attempt_count, str(exc), None)
-
-    def _complete_step(self, task_id: str, step_id: str, attempt_id: str, output: dict[str, Any], verification_details: list[str]) -> WorkerPassResult:
-        task = self.store.get_task(task_id)
-        step = self.store.get_current_step(task_id)
-        assert task is not None and step is not None
-        now = utcnow()
-        summary = output.get("summary", f"Completed step {step.step_index}: {step.title}")
-        artifacts = output.get("artifacts", {})
-        artifact_paths = [str(v) for v in artifacts.values()]
-        shared_state = self._build_next_shared_state(task, step, summary, artifact_paths, output)
-        all_steps = self.store.get_steps(task_id)
-        is_final_step = step.step_index >= len(all_steps) - 1
-
-        with self.store.transaction() as conn:
-            self.store.transition_step_status(
-                conn,
-                step_id,
-                StepStatus.DONE,
-                finished_at=now,
-                result_summary=summary,
-                artifact_paths=artifact_paths,
-            )
-            if is_final_step:
-                self.store.transition_task_status(
-                    conn,
-                    task_id,
-                    TaskStatus.COMPLETED,
-                    last_summary=summary,
-                    next_run_at=now,
-                    lease_owner=None,
-                    lease_expires_at=None,
-                )
-                self.store.set_task_shared_state(conn, task_id, shared_state)
-            else:
-                conn.execute(
-                    """
-                    UPDATE tasks
-                    SET status = ?, current_step_index = ?, last_summary = ?, next_run_at = ?,
-                        lease_owner = NULL, lease_expires_at = NULL, updated_at = ?
-                    WHERE id = ?
-                    """,
-                    (
-                        TaskStatus.READY.value,
-                        step.step_index + 1,
-                        summary,
-                        now.isoformat(),
-                        now.isoformat(),
-                        task_id,
-                    ),
-                )
-                self.store.set_task_shared_state(conn, task_id, shared_state)
-            self.store.record_attempt_finish(conn, attempt_id, AttemptStatus.SUCCESS, output={"verification": verification_details, **output})
-            self.store.add_event(conn, new_id(), task_id, "step.completed", {"step_index": step.step_index, "summary": summary}, step_id)
-            if is_final_step:
-                self.store.add_event(conn, new_id(), task_id, "task.completed", {"summary": summary}, step_id)
-
-        refreshed = self.store.get_task(task_id)
-        assert refreshed is not None
-        current_step = refreshed.current_step_index
-        next_action = "done" if refreshed.status is TaskStatus.COMPLETED else f"step {current_step}"
-        message = self._format_summary(refreshed, step.title, summary, next_action, False, refreshed.next_run_at.isoformat())
-        self._queue_and_send_notification(refreshed, message)
-        return WorkerPassResult(refreshed.id, refreshed.status, refreshed.current_step_index, message, True, False, refreshed.next_run_at.isoformat())
-
-    def _build_next_shared_state(self, task: Task, step: Step, summary: str, artifact_paths: list[str], output: dict[str, Any]) -> dict[str, Any]:
-        completed_steps = []
-        for item in task.shared_state.get('completed_steps', []):
-            if isinstance(item, dict):
-                completed_steps.append(item)
-
-        completed_steps.append({
-            'step_index': step.step_index,
-            'title': step.title,
-            'summary': summary,
-            'artifact_paths': artifact_paths,
-        })
-
-        next_state = dict(task.shared_state)
-        next_state['completed_steps'] = completed_steps
-        next_state['last_completed_step'] = {
-            'step_index': step.step_index,
-            'title': step.title,
-            'summary': summary,
-            'artifact_paths': artifact_paths,
-        }
-        runner_shared_state = output.get('shared_state')
-        if isinstance(runner_shared_state, dict):
-            next_state['runner_shared_state'] = runner_shared_state
-        return next_state
-
-    def _retry_or_fail(self, task_id: str, step_id: str, attempt_id: str, attempt_count: int, error: str, output: dict[str, Any] | None) -> WorkerPassResult:
-        task = self.store.get_task(task_id)
-        step = self.store.get_current_step(task_id)
-        assert task is not None and step is not None
-        now = utcnow()
-        exhausted = attempt_count >= step.max_attempts
-        if exhausted:
-            target_status = TaskStatus.FAILED if step.status is not StepStatus.BLOCKED else TaskStatus.BLOCKED
-            with self.store.transaction() as conn:
-                self.store.transition_step_status(conn, step_id, StepStatus.FAILED, finished_at=now, result_summary=error)
-                self.store.transition_task_status(
-                    conn,
-                    task_id,
-                    target_status,
-                    last_error=error,
-                    lease_owner=None,
-                    lease_expires_at=None,
-                    next_run_at=now,
-                )
-                self.store.record_attempt_finish(conn, attempt_id, AttemptStatus.FAILED, output=output, error_text=error)
-                self.store.add_event(conn, new_id(), task_id, "task.failed", {"error": error}, step_id)
-            refreshed = self.store.get_task(task_id)
-            assert refreshed is not None
-            message = self._format_summary(refreshed, step.title, f"Step failed: {error}", "awaiting explicit resume", True, None)
-            self._queue_and_send_notification(refreshed, message)
-            return WorkerPassResult(refreshed.id, refreshed.status, refreshed.current_step_index, message, True, True, None)
-
-        backoff = compute_retry_backoff(attempt_count)
-        next_run_at = now + backoff
-        with self.store.transaction() as conn:
-            self.store.transition_step_status(conn, step_id, StepStatus.PENDING, result_summary=error)
-            conn.execute(
-                "UPDATE tasks SET status = ?, last_error = ?, next_run_at = ?, lease_owner = NULL, lease_expires_at = NULL, updated_at = ? WHERE id = ?",
-                (TaskStatus.READY.value, error, next_run_at.isoformat(), now.isoformat(), task_id),
-            )
-            self.store.record_attempt_finish(conn, attempt_id, AttemptStatus.RETRY, output=output, error_text=error)
-            self.store.add_event(conn, new_id(), task_id, "step.retry_scheduled", {"error": error, "next_run_at": next_run_at.isoformat()}, step_id)
-        refreshed = self.store.get_task(task_id)
-        assert refreshed is not None
-        message = self._format_summary(refreshed, step.title, f"Retry scheduled: {error}", "automatic retry", False, next_run_at.isoformat())
-        self._queue_and_send_notification(refreshed, message)
-        return WorkerPassResult(refreshed.id, refreshed.status, refreshed.current_step_index, message, True, False, next_run_at.isoformat())
-
-    def _mark_waiting_user(self, task_id: str, step_id: str, attempt_id: str, prompt: str) -> WorkerPassResult:
-        task = self.store.get_task(task_id)
-        step = self.store.get_current_step(task_id)
-        assert task is not None and step is not None
-        now = utcnow()
-        alert_hash = waiting_alert_hash(prompt, task_id, step.step_index)
-        with self.store.transaction() as conn:
-            self.store.transition_step_status(conn, step_id, StepStatus.PENDING, result_summary=prompt)
-            conn.execute(
-                "UPDATE tasks SET status = ?, waiting_prompt = ?, waiting_alert_hash = ?, lease_owner = NULL, lease_expires_at = NULL, next_run_at = ?, updated_at = ? WHERE id = ?",
-                (TaskStatus.WAITING_USER.value, prompt, alert_hash, now.isoformat(), now.isoformat(), task_id),
-            )
-            self.store.record_attempt_finish(conn, attempt_id, AttemptStatus.NEEDS_USER, error_text=prompt)
-            self.store.add_event(conn, new_id(), task_id, "task.waiting_user", {"prompt": prompt}, step_id)
-        refreshed = self.store.get_task(task_id)
-        assert refreshed is not None
-        message = self._format_summary(refreshed, step.title, f"Need user input: {prompt}", "waiting for user", True, None)
-        sent = self._queue_and_send_notification(refreshed, message)
-        if sent:
-            with self.store.transaction() as conn:
-                conn.execute(
-                    "UPDATE tasks SET waiting_alert_sent_at = ?, updated_at = ? WHERE id = ?",
-                    (now.isoformat(), now.isoformat(), task_id),
-                )
-        return WorkerPassResult(refreshed.id, refreshed.status, refreshed.current_step_index, message, True, True, None)
-
-    def _mark_blocked(self, task_id: str, step_id: str, attempt_id: str, reason: str) -> WorkerPassResult:
-        task = self.store.get_task(task_id)
-        step = self.store.get_current_step(task_id)
-        assert task is not None and step is not None
-        now = utcnow()
-        with self.store.transaction() as conn:
-            self.store.transition_step_status(conn, step_id, StepStatus.BLOCKED, finished_at=now, result_summary=reason)
-            conn.execute(
-                "UPDATE tasks SET status = ?, last_error = ?, lease_owner = NULL, lease_expires_at = NULL, next_run_at = ?, updated_at = ? WHERE id = ?",
-                (TaskStatus.BLOCKED.value, reason, now.isoformat(), now.isoformat(), task_id),
-            )
-            self.store.record_attempt_finish(conn, attempt_id, AttemptStatus.BLOCKED, error_text=reason)
-            self.store.add_event(conn, new_id(), task_id, "task.blocked", {"reason": reason}, step_id)
-        refreshed = self.store.get_task(task_id)
-        assert refreshed is not None
-        message = self._format_summary(refreshed, step.title, f"Blocked: {reason}", "awaiting explicit resume", True, None)
-        self._queue_and_send_notification(refreshed, message)
-        return WorkerPassResult(refreshed.id, refreshed.status, refreshed.current_step_index, message, True, True, None)
-
-    def _queue_and_send_notification(self, task: Task, message: str) -> bool:
-        notification_id = new_id()
-        with self.store.transaction() as conn:
-            self.store.enqueue_notification(conn, notification_id, task.id, task.notify_channel, task.notify_chat_id, message)
-        ok = self.notifier.send(task, message)
-        if ok:
-            self.store.mark_notification_sent(notification_id)
-        else:
-            error_text = getattr(self.notifier, 'last_error', lambda: None)() or 'send returned false'
-            self.store.mark_notification_failed(notification_id, error_text)
-        return ok
-
-    def _format_summary(self, task: Task, step_title: str, did: str, next_action: str, needs_user: bool, next_run_at: str | None) -> str:
-        return (
-            f"did: {did}\n"
-            f"task_state: {task.status.value}\n"
-            f"current_step: {task.current_step_index} ({step_title})\n"
-            f"next_action: {next_action}\n"
-            f"user_input_required: {'yes' if needs_user else 'no'}\n"
-            f"next_run_at: {next_run_at or '-'}"
-        )
+            rules = Rules.model_validate(step.verification)
+            if (
+                not isinstance(output, dict)
+                or not isinstance(output.get("summary"), str)
+                or not output["summary"].strip()
+            ):
+                raise ValueError("A nonempty summary is required")
+            if len(stable_json(output).encode()) > 262144:
+                raise ValueError("Step output exceeds 256 KiB")
+            if rules.command_exit_code is not None and (
+                type(output.get("command_exit_code")) is not int
+                or output["command_exit_code"] != rules.command_exit_code
+            ):
+                raise ValueError("Reported command_exit_code differs from expected value")
+            for name in rules.file_exists:
+                if not Path(name).is_file():
+                    raise ValueError(f"Missing file: {name}")
+            for item in rules.file_contains:
+                with Path(item.path).open("rb") as handle:
+                    content = handle.read(1048577)
+                if len(content) > 1048576:
+                    raise ValueError("Content verification file exceeds one MiB")
+                if item.contains not in content.decode("utf-8"):
+                    raise ValueError(f"Expected content absent: {item.path}")
+            if any(key not in output for key in rules.json_keys):
+                raise ValueError("Missing required output key")
+            artifacts = output.get("artifacts", {})
+            if not isinstance(artifacts, dict) or len(artifacts) > 64:
+                raise ValueError("Artifacts must be an object of at most 64 paths")
+            if any(key not in artifacts for key in rules.artifact_keys):
+                raise ValueError("Missing required artifact key")
+            for path in artifacts.values():
+                if (
+                    not isinstance(path, str)
+                    or not Path(path).is_absolute()
+                    or not Path(path).is_file()
+                ):
+                    raise ValueError("Every artifact must name an existing absolute file path")
+            if "shared_state" in output and not isinstance(output["shared_state"], dict):
+                raise ValueError("shared_state must be an object")
+            return VerificationResult(True, ["configured verification rules passed"])
+        except (ValueError, TypeError, OSError) as exc:
+            return VerificationResult(False, [str(exc)[:1024]])
 
 
-class Scheduler:
-    def __init__(self, store: TaskStore, worker: Worker):
-        self.store = store
-        self.worker = worker
-
-    def tick(self, worker_id: str) -> list[WorkerPassResult]:
-        recovered = self.store.recover_expired_running_tasks()
-        results: list[WorkerPassResult] = []
-        for row in self.store.list_pending_notifications():
-            task = self.store.get_task(row['task_id'])
-            if task is None:
-                continue
-            ok = self.worker.notifier.send(task, row['message'])
-            if ok:
-                self.store.mark_notification_sent(row['id'])
-            else:
-                error_text = getattr(self.worker.notifier, 'last_error', lambda: None)() or 'retry send returned false'
-                self.store.mark_notification_failed(row['id'], error_text)
-        for task in self.store.runnable_tasks():
-            lease = self.store.acquire_lease(task.id, worker_id)
-            if lease is None:
-                continue
-            if lease.reclaimed_expired_lease:
-                with self.store.transaction() as conn:
-                    self.store.add_event(conn, new_id(), task.id, "lease.expired", {"reclaimed": True})
-            results.append(self.worker.run_pass(task.id, worker_id))
-        return results
+def compute_retry_backoff(attempt_number):
+    return timedelta(minutes=[1, 5, 15, 30][min(max(attempt_number - 1, 0), 3)])
 
 
 class NeedsUserInput(RuntimeError):
@@ -402,3 +111,298 @@ class NeedsUserInput(RuntimeError):
 
 class TaskBlocked(RuntimeError):
     pass
+
+
+class StepDeferred(RuntimeError):
+    """A microtask checkpoint yielded its lease without consuming a retry."""
+
+
+class Worker:
+    def __init__(self, store, executor, notifier, verifier=None, settings=None):
+        self.store, self.executor, self.notifier = store, executor, notifier
+        self.verifier = verifier or DeterministicVerifier()
+        self.settings = settings or store.settings
+
+    @contextmanager
+    def _heartbeat(self, task_id, token, refresh_operation=None):
+        stop, cancelled = threading.Event(), threading.Event()
+        context_token = execution_cancelled.set(cancelled)
+
+        def refresh():
+            while not stop.wait(self.settings.lease_refresh_seconds):
+                try:
+                    renewed = (
+                        refresh_operation()
+                        if refresh_operation
+                        else self.store.refresh_lease(task_id, token)
+                    )
+                    if renewed:
+                        continue
+                except Exception:
+                    pass
+                cancelled.set()
+                return
+
+        thread = threading.Thread(target=refresh, name="long-task-lease", daemon=True)
+        thread.start()
+        try:
+            yield cancelled
+        finally:
+            stop.set()
+            thread.join()
+            execution_cancelled.reset(context_token)
+
+    def _idle(self, task_id, message):
+        task = self.store.get_task(task_id)
+        if task is None:
+            raise KeyError(task_id)
+        return WorkerPassResult(task.id, task.status, task.current_step_index, message, False)
+
+    def run_pass(self, task_id, worker_id):
+        token = worker_id + ":" + new_id()
+        if self.store.acquire_lease(task_id, token) is None:
+            return self._idle(task_id, "Task is not due or is leased by another worker")
+        attempt_id = new_id()
+        try:
+            with self.store.transaction() as conn:
+                if not self.store.owns_lease(conn, task_id, token):
+                    return self._idle(task_id, "Lease lost before execution")
+                task = self.store._row_to_task(
+                    conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+                )
+                step_row = conn.execute(
+                    "SELECT * FROM steps WHERE task_id=? AND step_index=?",
+                    (task_id, task.current_step_index),
+                ).fetchone()
+                if step_row is None:
+                    raise ValueError("Task has no current step")
+                step = self.store._row_to_step(step_row)
+                if step.status == StepStatus.IN_PROGRESS:
+                    conn.execute("UPDATE steps SET status='pending' WHERE id=?", (step.id,))
+                    conn.execute(
+                        "UPDATE attempts SET finished_at=?,error_text='lease reclaimed',status='retry' WHERE task_id=? AND finished_at IS NULL",
+                        (utcnow().isoformat(), task_id),
+                    )
+                conn.execute(
+                    "UPDATE tasks SET status='running',last_error=NULL,updated_at=? WHERE id=?",
+                    (utcnow().isoformat(), task_id),
+                )
+                self.store.transition_step_status(
+                    conn,
+                    step.id,
+                    StepStatus.IN_PROGRESS,
+                    started_at=utcnow(),
+                    attempt_count=step.attempt_count + 1,
+                )
+                self.store.record_attempt_start(
+                    conn,
+                    attempt_id,
+                    task_id,
+                    step.id,
+                    "worker",
+                    token,
+                    {"step_index": step.step_index},
+                )
+                self.store.add_event(
+                    conn,
+                    new_id(),
+                    task_id,
+                    "worker.pass.started",
+                    {"attempt_id": attempt_id},
+                    step.id,
+                )
+            artifacts_dir = self.settings.artifacts_dir / task_id / attempt_id
+            artifacts_dir.mkdir(parents=True, exist_ok=False)
+            step.attempt_count += 1
+            output, error, outcome = None, None, "success"
+            with self._heartbeat(task_id, token):
+                try:
+                    if step.attempt_count > step.max_attempts:
+                        raise TaskBlocked(
+                            "Interrupted attempts exhausted the step budget; explicit resume required"
+                        )
+                    output = self.executor.execute(task, step, step.attempt_count, artifacts_dir)
+                    verification = self.verifier.verify(step, output)
+                    if not verification.ok:
+                        error, outcome = verification.details[0], "error"
+                except StepDeferred as exc:
+                    error, outcome = str(exc)[:1024], "deferred"
+                except NeedsUserInput as exc:
+                    error, outcome = str(exc)[:16384], "waiting"
+                except TaskBlocked as exc:
+                    error, outcome = str(exc)[:1024], "blocked"
+                except Exception as exc:
+                    error, outcome = str(exc)[:1024], "error"
+                result = self._settle(task, step, attempt_id, token, outcome, output, error)
+            self.deliver_notifications()
+            return result
+        finally:
+            self.store.release_lease(task_id, token)
+
+    def _settle(self, task, step, attempt_id, token, outcome, output, error):
+        now = utcnow()
+        with self.store.transaction() as conn:
+            if not self.store.owns_lease(conn, task.id, token):
+                return self._idle(task.id, "Discarded result after execution lease was lost")
+            index, next_run = step.step_index, now
+            shared = dict(task.shared_state)
+            paths = []
+            if outcome == "success":
+                summary = output["summary"][:16384]
+                paths = list(output.get("artifacts", {}).values())
+                final = (
+                    conn.execute(
+                        "SELECT count(*) FROM steps WHERE task_id=?", (task.id,)
+                    ).fetchone()[0]
+                    == index + 1
+                )
+                status, step_status, attempt_status = (
+                    (TaskStatus.COMPLETED if final else TaskStatus.READY),
+                    StepStatus.DONE,
+                    AttemptStatus.SUCCESS,
+                )
+                entry = {
+                    "step_index": index,
+                    "title": step.title,
+                    "summary": summary,
+                    "artifact_paths": paths,
+                }
+                shared["completed_steps"] = [*shared.get("completed_steps", []), entry][-32:]
+                shared["last_completed_step"] = entry
+                if "shared_state" in output:
+                    shared["runner_shared_state"] = output["shared_state"]
+                index += 0 if final else 1
+            else:
+                summary = error or "Step failed"
+                if outcome == "deferred":
+                    status, step_status, attempt_status = (
+                        TaskStatus.READY,
+                        StepStatus.PENDING,
+                        AttemptStatus.YIELDED,
+                    )
+                    conn.execute(
+                        "UPDATE steps SET attempt_count=attempt_count-1 WHERE id=?", (step.id,)
+                    )
+                elif outcome == "waiting":
+                    status, step_status, attempt_status = (
+                        TaskStatus.WAITING_USER,
+                        StepStatus.PENDING,
+                        AttemptStatus.NEEDS_USER,
+                    )
+                elif outcome == "blocked":
+                    status, step_status, attempt_status = (
+                        TaskStatus.BLOCKED,
+                        StepStatus.BLOCKED,
+                        AttemptStatus.BLOCKED,
+                    )
+                elif step.attempt_count >= step.max_attempts:
+                    status, step_status, attempt_status = (
+                        TaskStatus.FAILED,
+                        StepStatus.FAILED,
+                        AttemptStatus.FAILED,
+                    )
+                else:
+                    status, step_status, attempt_status = (
+                        TaskStatus.READY,
+                        StepStatus.PENDING,
+                        AttemptStatus.RETRY,
+                    )
+                    next_run += compute_retry_backoff(step.attempt_count)
+            self.store.transition_step_status(
+                conn,
+                step.id,
+                step_status,
+                result_summary=summary,
+                artifact_paths=paths,
+                finished_at=now if step_status != StepStatus.PENDING else None,
+            )
+            conn.execute(
+                "UPDATE tasks SET status=?,current_step_index=?,last_summary=?,last_error=?,next_run_at=?,lease_owner=NULL,lease_expires_at=NULL,updated_at=?,shared_state_json=?,waiting_prompt=?,waiting_alert_hash=? WHERE id=?",
+                (
+                    status.value,
+                    index,
+                    summary,
+                    error,
+                    next_run.isoformat(),
+                    now.isoformat(),
+                    stable_json(shared),
+                    summary if outcome == "waiting" else None,
+                    waiting_alert_hash(summary, task.id, index) if outcome == "waiting" else None,
+                    task.id,
+                ),
+            )
+            self.store.record_attempt_finish(
+                conn, attempt_id, attempt_status, output if outcome == "success" else None, error
+            )
+            event_id = new_id()
+            self.store.add_event(
+                conn,
+                event_id,
+                task.id,
+                "step." + attempt_status.value,
+                {"summary": summary},
+                step.id,
+            )
+            needs_user = status in {TaskStatus.WAITING_USER, TaskStatus.BLOCKED, TaskStatus.FAILED}
+            message = f"did: {summary}\ntask_state: {status.value}\ncurrent_step: {index}\nuser_input_required: {'yes' if needs_user else 'no'}"
+            notification_id = new_id()
+            self.store.enqueue_notification(
+                conn,
+                notification_id,
+                task.id,
+                task.notify_channel,
+                task.notify_chat_id,
+                message,
+                event_id,
+            )
+            snapshot = dict(conn.execute("SELECT * FROM tasks WHERE id=?", (task.id,)).fetchone())
+            conn.execute(
+                "UPDATE notifications SET snapshot_json=? WHERE id=?",
+                (stable_json(snapshot), notification_id),
+            )
+        return WorkerPassResult(
+            task.id,
+            status,
+            index,
+            message,
+            True,
+            needs_user,
+            next_run.isoformat() if status == TaskStatus.READY else None,
+        )
+
+    def deliver_notifications(self):
+        for pending in self.store.list_pending_notifications():
+            token = new_id()
+            row = self.store.claim_notification(pending["id"], token)
+            if row is None:
+                continue
+            try:
+                task = (
+                    self.store._row_to_task(json.loads(row["snapshot_json"]))
+                    if row["snapshot_json"]
+                    else self.store.get_task(row["task_id"])
+                )
+                with self._heartbeat(
+                    row["task_id"],
+                    token,
+                    lambda notification_id=row["id"], claim=token: self.store.refresh_notification(
+                        notification_id, claim
+                    ),
+                ):
+                    if task is None or not self.notifier.send(task, row["message"]):
+                        raise RuntimeError("Notification transport did not acknowledge delivery")
+            except Exception as exc:
+                self.store.mark_notification_failed(row["id"], type(exc).__name__, token)
+            else:
+                self.store.mark_notification_sent(row["id"], token)
+
+
+class Scheduler:
+    def __init__(self, store: TaskStore, worker: Worker):
+        self.store, self.worker = store, worker
+
+    def tick(self, worker_id):
+        self.store.recover_expired_running_tasks()
+        self.worker.deliver_notifications()
+        results = [self.worker.run_pass(task.id, worker_id) for task in self.store.runnable_tasks()]
+        return [result for result in results if result.did_work]

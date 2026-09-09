@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
+from itertools import islice
 
 from .models import Step, StepKind, Task, TaskStatus
 from .storage import TaskStore
@@ -13,10 +14,10 @@ def create_task(
     title: str,
     goal: str,
     steps: Iterable[dict],
-    notify_chat_id: str,
-    notify_channel: str = 'telegram',
-    source_session_key: str = 'external',
-    source_channel: str = 'external',
+    notify_chat_id: str = "local",
+    notify_channel: str = "local",
+    source_session_key: str = "external",
+    source_channel: str = "external",
     source_chat_id: str | None = None,
     notify_message_ref: str | None = None,
     reply_message_id: str | None = None,
@@ -24,7 +25,12 @@ def create_task(
 ) -> Task:
     now = utcnow()
     task_id = new_id()
-    step_list = list(steps)
+    step_list = list(islice(steps, 257))
+    if not 1 <= len(step_list) <= 256 or any(not isinstance(item, dict) for item in step_list):
+        raise ValueError("Supply 1–256 step objects")
+    allowed = {"title", "instructions", "kind", "verification", "max_attempts"}
+    if any(set(item) - allowed or not {"title", "instructions"} <= set(item) for item in step_list):
+        raise ValueError("Invalid or missing step fields")
     task = Task(
         id=task_id,
         title=title,
@@ -35,7 +41,7 @@ def create_task(
         updated_at=now,
         status=TaskStatus.READY,
         goal=goal,
-        plan={'steps': [item['title'] for item in step_list]},
+        plan={"steps": [item["title"] for item in step_list]},
         current_step_index=0,
         next_run_at=now,
         lease_owner=None,
@@ -57,11 +63,11 @@ def create_task(
             id=new_id(),
             task_id=task_id,
             step_index=index,
-            title=item['title'],
-            kind=StepKind(item.get('kind', 'execute')),
-            instructions=item['instructions'],
-            verification=item.get('verification', {}),
-            max_attempts=item.get('max_attempts', 3),
+            title=item["title"],
+            kind=StepKind(item.get("kind", "execute")),
+            instructions=item["instructions"],
+            verification=item.get("verification", {}),
+            max_attempts=item.get("max_attempts", 3),
         )
         for index, item in enumerate(step_list)
     ]

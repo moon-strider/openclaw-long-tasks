@@ -9,7 +9,7 @@ from typing import Any
 @dataclass(slots=True)
 class Attachment:
     path: str
-    kind: str = 'file'
+    kind: str = "file"
     caption: str | None = None
 
 
@@ -23,7 +23,7 @@ class TaskStatus(StrEnum):
     FAILED = "failed"
     CANCELLED = "cancelled"
 
-    def can_transition_to(self, target: "TaskStatus") -> bool:
+    def can_transition_to(self, target: TaskStatus) -> bool:
         allowed = {
             TaskStatus.PLANNING: {TaskStatus.READY, TaskStatus.WAITING_USER, TaskStatus.CANCELLED},
             TaskStatus.READY: {TaskStatus.RUNNING, TaskStatus.CANCELLED},
@@ -51,10 +51,15 @@ class StepStatus(StrEnum):
     FAILED = "failed"
     BLOCKED = "blocked"
 
-    def can_transition_to(self, target: "StepStatus") -> bool:
+    def can_transition_to(self, target: StepStatus) -> bool:
         allowed = {
             StepStatus.PENDING: {StepStatus.IN_PROGRESS},
-            StepStatus.IN_PROGRESS: {StepStatus.PENDING, StepStatus.DONE, StepStatus.FAILED, StepStatus.BLOCKED},
+            StepStatus.IN_PROGRESS: {
+                StepStatus.PENDING,
+                StepStatus.DONE,
+                StepStatus.FAILED,
+                StepStatus.BLOCKED,
+            },
             StepStatus.DONE: set(),
             StepStatus.FAILED: set(),
             StepStatus.BLOCKED: set(),
@@ -63,6 +68,7 @@ class StepStatus(StrEnum):
 
 
 class StepKind(StrEnum):
+    MAKER = "maker"
     RESEARCH = "research"
     EXECUTE = "execute"
     VERIFY = "verify"
@@ -70,6 +76,7 @@ class StepKind(StrEnum):
 
 
 class AttemptStatus(StrEnum):
+    YIELDED = "yielded"
     SUCCESS = "success"
     RETRY = "retry"
     BLOCKED = "blocked"

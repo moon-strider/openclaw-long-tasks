@@ -21,7 +21,9 @@ def ensure_parent(path: Path) -> None:
 
 
 def stable_json(data: Any) -> str:
-    return json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return json.dumps(
+        data, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+    )
 
 
 def waiting_alert_hash(prompt: str | None, task_id: str, step_index: int) -> str:
