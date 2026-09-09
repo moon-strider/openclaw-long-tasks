@@ -110,4 +110,4 @@ uv build
 
 Normal tests use temporary state directories and need no model, OpenClaw installation, provider account or outbound messaging. A separate integration job exercises an installed OpenClaw CLI against a deterministic upstream fixture. See [testing](docs/testing.md) for real-model commands.
 
-MIT licensed. The API is still evolving; [migration notes](docs/operations.md#migrating-from-the-prototype) describe the changes from the original prototype.
+MIT licensed.

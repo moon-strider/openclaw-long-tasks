@@ -355,11 +355,6 @@ class Worker:
                 message,
                 event_id,
             )
-            snapshot = dict(conn.execute("SELECT * FROM tasks WHERE id=?", (task.id,)).fetchone())
-            conn.execute(
-                "UPDATE notifications SET snapshot_json=? WHERE id=?",
-                (stable_json(snapshot), notification_id),
-            )
         return WorkerPassResult(
             task.id,
             status,
@@ -377,11 +372,7 @@ class Worker:
             if row is None:
                 continue
             try:
-                task = (
-                    self.store._row_to_task(json.loads(row["snapshot_json"]))
-                    if row["snapshot_json"]
-                    else self.store.get_task(row["task_id"])
-                )
+                task = self.store._row_to_task(json.loads(row["snapshot_json"]))
                 with self._heartbeat(
                     row["task_id"],
                     token,
@@ -389,7 +380,7 @@ class Worker:
                         notification_id, claim
                     ),
                 ):
-                    if task is None or not self.notifier.send(task, row["message"]):
+                    if not self.notifier.send(task, row["message"]):
                         raise RuntimeError("Notification transport did not acknowledge delivery")
             except Exception as exc:
                 self.store.mark_notification_failed(row["id"], type(exc).__name__, token)

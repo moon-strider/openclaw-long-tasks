@@ -114,6 +114,10 @@ CREATE TABLE IF NOT EXISTS notifications (
     last_attempt_at TEXT,
     sent_at TEXT,
     attempt_count INTEGER NOT NULL DEFAULT 0,
+    snapshot_json TEXT NOT NULL,
+    claim_token TEXT,
+    claim_expires_at TEXT,
+    next_attempt_at TEXT,
     FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 
@@ -149,23 +153,6 @@ class TaskStore:
     def _initialize(self) -> None:
         with closing(self._connect()) as conn, conn:
             conn.executescript(SCHEMA)
-            columns = {row["name"] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()}
-            if "reply_message_id" not in columns:
-                conn.execute("ALTER TABLE tasks ADD COLUMN reply_message_id TEXT")
-            if "final_report_max_chars" not in columns:
-                conn.execute(
-                    "ALTER TABLE tasks ADD COLUMN final_report_max_chars INTEGER NOT NULL DEFAULT 4000"
-                )
-            if "shared_state_json" not in columns:
-                conn.execute(
-                    "ALTER TABLE tasks ADD COLUMN shared_state_json TEXT NOT NULL DEFAULT '{}' "
-                )
-            notification_columns = {
-                row["name"] for row in conn.execute("PRAGMA table_info(notifications)")
-            }
-            for name in ["snapshot_json", "claim_token", "claim_expires_at", "next_attempt_at"]:
-                if name not in notification_columns:
-                    conn.execute(f"ALTER TABLE notifications ADD COLUMN {name} TEXT")
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
@@ -492,12 +479,24 @@ class TaskStore:
         message: str,
         event_id: str | None = None,
     ) -> None:
+        snapshot = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if snapshot is None:
+            raise KeyError(task_id)
         conn.execute(
             """
-            INSERT INTO notifications (id, task_id, event_id, channel, target, message, status, created_at, attempt_count)
-            VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, 0)
+            INSERT INTO notifications (id, task_id, event_id, channel, target, message, status, created_at, attempt_count, snapshot_json)
+            VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, 0, ?)
             """,
-            (notification_id, task_id, event_id, channel, target, message, utcnow().isoformat()),
+            (
+                notification_id,
+                task_id,
+                event_id,
+                channel,
+                target,
+                message,
+                utcnow().isoformat(),
+                stable_json(dict(snapshot)),
+            ),
         )
 
     def list_pending_notifications(self, limit: int = 100) -> list[sqlite3.Row]:
@@ -745,7 +744,7 @@ class TaskStore:
             notify_message_ref=row["notify_message_ref"],
             reply_message_id=row["reply_message_id"],
             final_report_max_chars=row["final_report_max_chars"],
-            shared_state=json.loads(row["shared_state_json"] or "{}"),
+            shared_state=json.loads(row["shared_state_json"]),
         )
 
     def _row_to_step(self, row: sqlite3.Row) -> Step:

@@ -161,6 +161,7 @@ def test_sampler_forwards_seed_and_limits_without_leaking_auth(monkeypatch):
         )
         try:
             assert "test-secret" not in json.dumps(sampler.identity)
+            assert sampler.identity["response_format"] is None
             sample = await sampler.sample("test", 3)
             assert sample.text == "1" and sample.usage == {"total_tokens": 3}
         finally:
@@ -169,7 +170,7 @@ def test_sampler_forwards_seed_and_limits_without_leaking_auth(monkeypatch):
     asyncio.run(run())
 
 
-def test_sampler_forwards_format_and_preserves_unstructured_identity():
+def test_sampler_forwards_recorded_format_without_caller_mutation():
     response_format = {
         "type": "json_schema",
         "json_schema": {"name": "move", "schema": {"type": "object"}},
@@ -186,14 +187,11 @@ def test_sampler_forwards_format_and_preserves_unstructured_identity():
 
     async def run():
         sampler = HTTPSampler(config, transport=httpx.MockTransport(respond))
-        legacy = HTTPSampler(SamplingConfig(), transport=httpx.MockTransport(respond))
         try:
-            assert "response_format" not in legacy.identity
-            assert sampler.identity != legacy.identity
+            assert sampler.identity["response_format"]["type"] == "json_schema"
             assert (await sampler.sample("one move", 0)).text == "{}"
         finally:
             await sampler.close()
-            await legacy.close()
 
     asyncio.run(run())
 

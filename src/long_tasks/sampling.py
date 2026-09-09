@@ -77,10 +77,7 @@ class HTTPSampler:
 
     @property
     def identity(self):
-        identity = {"implementation": "openai-compatible-v1", **asdict(self.config)}
-        if self.config.response_format is None:
-            del identity["response_format"]  # Preserve fingerprints of existing unstructured runs.
-        return identity
+        return {"implementation": "openai-compatible-v1", **asdict(self.config)}
 
     async def sample(self, prompt: str, index: int) -> Sample:
         config = self.config

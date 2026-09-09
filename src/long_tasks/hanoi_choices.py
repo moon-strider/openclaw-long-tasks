@@ -44,16 +44,14 @@ class ChoiceHanoi:
 
     @property
     def specification(self):
-        specification = {
+        return {
             "task": "hanoi-choice",
-            "version": 1,
+            "version": 2,
             "disks": self.task.disks,
             "validation": "all_legal_moves_only",
             "rule_style": self.rule_style,
+            "routing_style": self.routing_style,
         }
-        if self.routing_style != "mapping":
-            specification.update(version=2, routing_style=self.routing_style)
-        return specification
 
     @property
     def initial_state(self):

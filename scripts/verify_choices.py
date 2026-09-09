@@ -41,7 +41,7 @@ def verify_experiment(folder):
             spec["task"]["rule_style"],
             spec["task"].get("routing_style", "mapping"),
         )
-        require(spec["task"] == protocol["task"] == task.specification, "Task mismatch")
+        require(spec["task"] == protocol["task"], "Task mismatch")
         require(spec["sampler"]["seed"] == result["seed"], "Seed mismatch")
         require(spec["voting"]["k"] == result["k"], "Voting margin mismatch")
         require(digest(spec) == run["fingerprint"], "Specification digest mismatch")

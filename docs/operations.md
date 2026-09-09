@@ -73,16 +73,6 @@ Delivery claims have heartbeats. Failed sends back off and become `dead` after e
 
 Delivery is at least once. A crash after the transport sent a message but before its acknowledgement was saved can cause a duplicate; a failed attachment can also cause earlier parts to be resent. No exactly-once external-delivery guarantee is made. No Telegram messages were sent during the repository's tests.
 
-## Backups and migration
+## Backups
 
 Keep the database and artifacts together on a local filesystem. Use SQLite's backup API or stop workers before copying the database; a live WAL database must not be backed up by copying only its main file. Restore to a separate directory first and inspect it before resuming execution.
-
-### Migrating from the prototype
-
-Back up existing state. Schema initialization adds the outbox claim and snapshot columns without deleting existing rows.
-
-Replace `--agent-id` and `--responder-agent-id` with an explicit `--config`. The new runner uses isolated agent turns and structured final output. It creates receipts itself instead of trusting a reused output filename.
-
-The additional LLM call that rewrote notification text has been removed. Notifications carry the verified summary and durable status. Implicit Telegram sending and the auto-starting service installer have also been removed.
-
-Old helper tests called a scripted executor and did not establish real model behavior. Their durable runtime scenario is retained as an explicitly named integration test using temporary state.

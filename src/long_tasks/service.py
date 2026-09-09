@@ -10,15 +10,13 @@ from .storage import TaskStore
 
 
 class TransportNotificationSink(NotificationSink):
-    def __init__(self, transport: NotificationTransport, store: TaskStore | None = None):
+    def __init__(self, transport: NotificationTransport):
         self.transport = transport
-        self.store = store
         self._last_error: str | None = None
 
     def send(self, task, message: str) -> bool:
         artifact_paths = task.shared_state.get("last_completed_step", {}).get("artifact_paths", [])
-        rendered = message
-        final_message, attachments = build_delivery_payload(task, rendered, artifact_paths)
+        final_message, attachments = build_delivery_payload(task, message, artifact_paths)
         ok = self.transport.send(task, final_message, attachments)
         self._last_error = self.transport.last_error()
         return ok
@@ -34,7 +32,7 @@ class RuntimeService:
     notifier: NotificationTransport
 
     def build_scheduler(self) -> Scheduler:
-        sink = TransportNotificationSink(self.notifier, self.store)
+        sink = TransportNotificationSink(self.notifier)
         worker = Worker(
             store=self.store,
             executor=_RunnerExecutor(self.runner, self.store.settings.db_path),
